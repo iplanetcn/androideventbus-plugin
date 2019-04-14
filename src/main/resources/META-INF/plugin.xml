@@ -1,0 +1,35 @@
+<idea-plugin>
+    <id>cn.cdtft.ideaplugin.androideventbus</id>
+    <name>AndroidEventBus</name>
+    <vendor email="iplanetcn@gmail.com" url="http://www.cdtft.cn">CDTFT</vendor>
+
+    <description><![CDATA[
+    Provides actions which allow you quickly move around the android event bus.(now it only for AndroidEventBus 1.x)
+    <ul>
+      <li><code>EventBus.post</code> to <code>@Subscribe</code> or <code>onEventMainThread</code></li>
+      <li><code>@Subscribe</code> to <code>EventBus.post</code></li>
+    </ul>
+    为 AndroidEventBus 提供快速索引和跳转（目前只支持 AndroidEventBus 1.x 版本）
+    <ul>
+      <li>从 <code>EventBus.post</code> 到 <code>@Subscribe</code> 或者 <code>onEventMainThread</code></li>
+      <li>从 <code>@Subscribe</code> 到 <code>EventBus.post</code></li>
+    </ul>
+    ]]></description>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="cn.cdtft.ideaplugin.androideventbus.AndroidEventBusLineMarkerProvider"/>
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+    </actions>
+</idea-plugin>
