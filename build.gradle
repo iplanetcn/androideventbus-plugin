@@ -30,18 +30,24 @@ dependencies {
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
     pluginName 'android-eventbus-plugin'
+    plugins 'android'
     version '2018.2.2'
-    type 'IC'
+    type 'Android'
     alternativeIdePath '/Applications/Android Studio.app'
 }
 
 patchPluginXml {
     changeNotes """
-    1.0.0
-    First Release"""
+    Version 1.0.0 
+    First Release
+    <em>support android studio</em>
+    <em>support androideventbus</em>"""
 }
 
 publishPlugin {
     token ideaPublishToken
+    username username
+    password password
     channels 'stable'
+    host 'https://plugins.jetbrains.com'
 }

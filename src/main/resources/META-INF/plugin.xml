@@ -3,6 +3,7 @@
     <name>AndroidEventBus</name>
     <vendor email="iplanetcn@gmail.com" url="http://www.cdtft.cn">TFT Team Android</vendor>
 
+    <depends>org.jetbrains.android</depends>
     <description><![CDATA[
     为 AndroidEventBus 提供快速索引和跳转（目前只支持 AndroidEventBus 1.x 版本）:
     <ul>
