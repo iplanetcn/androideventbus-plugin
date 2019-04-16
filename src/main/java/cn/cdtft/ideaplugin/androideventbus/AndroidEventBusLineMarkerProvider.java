@@ -56,13 +56,16 @@ public class AndroidEventBusLineMarkerProvider implements LineMarkerProvider {
                 if (psiElement instanceof PsiMethodCallExpression) {
                     PsiMethodCallExpression expression = (PsiMethodCallExpression) psiElement;
                     PsiType[] expressionTypes = expression.getArgumentList().getExpressionTypes();
+                    final PsiExpression[] expressions = expression.getArgumentList().getExpressions();
                     if (expressionTypes.length > 0) {
                         PsiClass messageClass = PsiUtils.getClass(expressionTypes[0]);
-                        // TODO 判断TAG
-
-                        if (messageClass != null) {
-                            new ShowUsagesAction(new ReceiverFilter()).startFindUsages(messageClass, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
+                        if (expressions.length == 2) {
+                            PsiExpression tagExpression = expressions[1];
+                            if (messageClass != null && tagExpression !=null ) {
+                                new ShowUsagesAction(new ReceiverFilter(tagExpression)).startFindUsages(messageClass, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
+                            }
                         }
+
                     }
                 }
 

@@ -14,7 +14,7 @@ apply plugin: 'org.jetbrains.intellij'
 apply plugin: 'java'
 
 group 'cn.tft.teamandroid.jetplugins'
-version '0.1'
+version '1.0'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -38,6 +38,8 @@ intellij {
 
 patchPluginXml {
     changeNotes """
-      Add change notes here.<br>
-      <em>most HTML tags may be used</em>"""
+    <ul>
+      <li>从 <code>EventBus.post(Message, TAG)</code> 到 <code>@Subscribe</code></li>
+      <li>从 <code>@Subscribe</code> 到 <code>EventBus.post(Message, TAG)</code></li>
+    </ul>"""
 }

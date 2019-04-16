@@ -4,6 +4,8 @@ import com.intellij.psi.*;
 import com.intellij.usages.Usage;
 import com.intellij.usages.UsageInfo2UsageAdapter;
 
+import java.util.Objects;
+
 /**
  * ReceiverFilter
  *
@@ -11,6 +13,12 @@ import com.intellij.usages.UsageInfo2UsageAdapter;
  * @since 2019-04-13
  */
 public class ReceiverFilter implements Filter {
+    private final PsiExpression mTagPsiExpression;
+
+    public ReceiverFilter(PsiExpression tagPsiExpression) {
+        mTagPsiExpression = tagPsiExpression;
+    }
+
     @Override
     public boolean shouldShow(Usage usage) {
         PsiElement element = ((UsageInfo2UsageAdapter) usage).getElement();
@@ -20,7 +28,13 @@ public class ReceiverFilter implements Filter {
                     if ((element = element.getParent()) instanceof PsiParameterList) {
                         if ((element = element.getParent()) instanceof PsiMethod) {
                             PsiMethod method = (PsiMethod) element;
-                            return PsiUtils.isEventBusReceiver(method);
+                            PsiModifierList modifierList = method.getModifierList();
+                            for (PsiAnnotation psiAnnotation : modifierList.getAnnotations()) {
+                                if (Objects.equals(psiAnnotation.getQualifiedName(), "org.simple.eventbus.Subscriber")) {
+                                    final PsiAnnotationMemberValue tag = psiAnnotation.findAttributeValue("tag");
+                                    return Objects.requireNonNull(tag).getLastChild().getText().equals(mTagPsiExpression.getLastChild().getText());
+                                }
+                            }
                         }
                     }
                 }
