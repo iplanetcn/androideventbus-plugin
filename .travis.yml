@@ -1,0 +1,17 @@
+language: java
+jdk:
+  - oraclejdk8
+script:
+  - ./gradlew clean buildPlugin
+deploy:
+  provider: releases
+  api_key:
+    secure: RlXo9PvwR7YM2U5HLB+RMF3amqijdRPnOogXRqnnIanhyb+jF4jB6OHRUDjFyRb81a4oEUVUQkR15FbQp1M6PM4BqSj2d8ry3e8JPQgATTLvsDs6klY0xaQ5D6pu8TPEbQOEzPd/oAS4cU/FOMEPhOPoVoOz1yCPJN3+VRDKC7h++FKQMdk1DBoLXbfVRcXstE74pxJRovuJVKf4L5jSq7ksQOsLPt+4iCiITnOJV1NDqDrEE/PXM1/JDPWNUEZwJRo/lDqIsAQOa31uw6tx61QAyqKyk+dkKgHbjun93T5npEAjGdzMRf4Mzu26LrZimi7e89Qq/JJFFmVzc8dMg80nuC8ZZN47sMueMmPBqp1U8PJSUiM+6QgwKiW10rR3HRHkZx9YJdx9w+96vEVkaLbCEB4dAq7nAfyBeWoJdj2F9f2ZE7pzW5gTlUTDthyx+iEvr+4surwTSJcsTmgdtXZb/v2ykf7tAydQ6MNK+5PUaw53bEcwzHz9PNsMR5moQ8mBymAubgNzJjQQ5r/R3ljW1u7XfPXoyzLSrDZ+Z+x4CCxGtbDVy0BPUcvTh9/1ItTdD+IRYvgV9unQiDtzfukDOQfQ0efd7s22ardqTIvXO025jVuuDvos0Otemc94aeLQ06XdCjMuYwBuPjXxANScgEEmCFRDZtEuNHRNPw0=
+  file_glob: true
+  file: ./build/libs/*
+  skip_cleanup: true
+  on:
+    tags: true
+  repo: iplanetcn/androideventbus-plugin
+  script:
+    - ./gradlew publishPlugin
