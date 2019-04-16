@@ -32,6 +32,7 @@ import com.intellij.usages.impl.UsageNode;
 import com.intellij.usages.impl.UsageViewImpl;
 import com.intellij.usages.rules.UsageInFile;
 import com.intellij.util.ui.EmptyIcon;
+import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -70,7 +71,7 @@ class  ShowUsagesTableCellRenderer implements TableCellRenderer {
 
 
         SimpleColoredComponent textChunks = new SimpleColoredComponent();
-        textChunks.setIpad(new Insets(0, 0, 0, 0));
+        textChunks.setIpad(JBUI.emptyInsets());
         textChunks.setBorder(null);
 
         if (column == 0) {
@@ -151,7 +152,7 @@ class  ShowUsagesTableCellRenderer implements TableCellRenderer {
             SimpleTextAttributes attributes = deriveAttributesWithColor(SimpleTextAttributes.REGULAR_ATTRIBUTES, fileBgColor);
             renderer.append(group.getText(myUsageView), attributes);
             renderer.append(" ", attributes);
-            renderer.setIpad(new Insets(0, 0, 0, 0));
+            renderer.setIpad(JBUI.emptyInsets());
             renderer.setBorder(null);
             panel.add(renderer);
         }

@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 class PsiUtils {
 
-    public static PsiClass getClass(PsiType psiType) {
+    static PsiClass getClass(PsiType psiType) {
         if (psiType instanceof PsiClassType) {
             return ((PsiClassType) psiType).resolve();
         }
@@ -21,9 +21,6 @@ class PsiUtils {
 
     /**
      * 判断是否为EventBus接收器
-     *
-     * @param psiElement
-     * @return
      */
     static boolean isEventBusReceiver(PsiElement psiElement) {
         if (psiElement instanceof PsiMethod) {
@@ -43,8 +40,6 @@ class PsiUtils {
 
     /**
      * 判断是否为EventBus发送器
-     * @param psiElement
-     * @return
      */
     static boolean isEventBusPost(PsiElement psiElement) {
         if (psiElement instanceof PsiCallExpression) {
@@ -69,8 +64,6 @@ class PsiUtils {
 
     /**
      * 判断是否为EventBus类
-     * @param psiClass
-     * @return
      */
     private static boolean isEventBusClass(PsiClass psiClass) {
         try {
@@ -82,8 +75,6 @@ class PsiUtils {
 
     /**
      * 判断是否为EventBus的超类
-     * @param psiClass
-     * @return
      */
     private static boolean isSuperClassEventBus(PsiClass psiClass) {
         PsiClass[] supers = psiClass.getSupers();

@@ -15,7 +15,7 @@ import java.util.Objects;
 public class ReceiverFilter implements Filter {
     private final PsiExpression mTagPsiExpression;
 
-    public ReceiverFilter(PsiExpression tagPsiExpression) {
+    ReceiverFilter(PsiExpression tagPsiExpression) {
         mTagPsiExpression = tagPsiExpression;
     }
 

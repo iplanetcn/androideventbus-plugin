@@ -13,7 +13,7 @@ import com.intellij.usages.UsageInfo2UsageAdapter;
 public class SenderFilter implements Filter {
     private final PsiElement mTagPsiElement;
 
-    public SenderFilter(PsiElement tagPsiElement) {
+    SenderFilter(PsiElement tagPsiElement) {
         mTagPsiElement = tagPsiElement;
     }
 

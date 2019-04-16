@@ -16,7 +16,6 @@
 package cn.cdtft.ideaplugin.androideventbus;
 
 import com.intellij.openapi.util.Condition;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -28,8 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author john
  * @since 2019-04-13
  */
-public class PingEDT {
-    private final String myName;
+class PingEDT {
     private final Runnable pingAction;
     private volatile boolean stopped;
     private volatile boolean pinged;
@@ -48,11 +46,8 @@ public class PingEDT {
                 return;
             }
             long start = System.currentTimeMillis();
-            int processed = 0;
             while (true) {
-                if (processNext()) {
-                    processed++;
-                } else {
+                if (!processNext()) {
                     break;
                 }
                 long finish = System.currentTimeMillis();
@@ -66,9 +61,8 @@ public class PingEDT {
         }
     };
 
-    public PingEDT(@NotNull @NonNls String name, @NotNull Condition<?> shutUpCondition,
+    public PingEDT(@NotNull Condition<?> shutUpCondition,
                    int maxUnitOfWorkThresholdMs, @NotNull Runnable pingAction) {
-        myName = name;
         myShutUpCondition = shutUpCondition;
         myMaxUnitOfWorkThresholdMs = maxUnitOfWorkThresholdMs;
         this.pingAction = pingAction;
@@ -85,21 +79,19 @@ public class PingEDT {
     }
 
     /** returns true if invokeLater was called */
-    public boolean ping() {
+    void ping() {
         pinged = true;
-        return scheduleUpdate();
+        scheduleUpdate();
     }
 
     /** returns true if invokeLater was called */
-    private boolean scheduleUpdate() {
+    private void scheduleUpdate() {
         if (!stopped && invokeLaterScheduled.compareAndSet(false, true)) {
             SwingUtilities.invokeLater(myUpdateRunnable);
-            return true;
         }
-        return false;
     }
 
-    public void stop() {
+    private void stop() {
         stopped = true;
     }
 }
