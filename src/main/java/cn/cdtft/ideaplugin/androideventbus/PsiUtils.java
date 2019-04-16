@@ -12,13 +12,7 @@ import java.util.Objects;
  */
 class PsiUtils {
 
-    /**
-     * 根据PsiType获取PsiClass
-     *
-     * @param psiType PsiType
-     * @return PsiClass
-     */
-    static PsiClass getClass(PsiType psiType) {
+    public static PsiClass getClass(PsiType psiType) {
         if (psiType instanceof PsiClassType) {
             return ((PsiClassType) psiType).resolve();
         }
@@ -37,10 +31,10 @@ class PsiUtils {
             PsiModifierList modifierList = method.getModifierList();
             for (PsiAnnotation psiAnnotation : modifierList.getAnnotations()) {
                 if (Objects.equals(psiAnnotation.getQualifiedName(), "org.simple.eventbus.Subscriber")) {
-                    final String tagValue = Objects.requireNonNull(psiAnnotation.findAttributeValue("tag")).getText();
-                    // TODO
-
-                    return true;
+                    final PsiAnnotationMemberValue tag = psiAnnotation.findAttributeValue("tag");
+                    if (tag!=null) {
+                        return true;
+                    }
                 }
             }
         }
@@ -63,12 +57,10 @@ class PsiUtils {
                     final PsiParameter[] postParameters = method.getParameterList().getParameters();
                     for (PsiParameter param : postParameters) {
                         if (Objects.equals(param.getName(), "tag")) {
-                            final String tagValue = param.getText();
-                            // TODO
+                            PsiClass implClass = (PsiClass) parent;
+                            return isEventBusClass(implClass) || isSuperClassEventBus(implClass);
                         }
                     }
-                    PsiClass implClass = (PsiClass) parent;
-                    return isEventBusClass(implClass) || isSuperClassEventBus(implClass);
                 }
             }
         }

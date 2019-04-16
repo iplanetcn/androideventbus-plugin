@@ -34,28 +34,40 @@ public class AndroidEventBusLineMarkerProvider implements LineMarkerProvider {
                 if (psiElement instanceof PsiMethod) {
                     Project project = psiElement.getProject();
                     JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
-                    PsiClass androidEventBusClass = javaPsiFacade.findClass("org.simple.eventbus", GlobalSearchScope.allScope(project));
+                    PsiClass androidEventBusClass = javaPsiFacade.findClass("org.simple.eventbus.EventBus", GlobalSearchScope.allScope(project));
                     assert androidEventBusClass != null;
-                    PsiMethod postMethod = androidEventBusClass.findMethodsByName("post", false)[0];
+                    // 发送方法
+                    PsiMethod postMethod = androidEventBusClass.findMethodsByName("post", false)[1];
+                    // 本接收方法
                     PsiMethod method = (PsiMethod) psiElement;
-                    PsiClass eventClass = ((PsiClassType) Objects.requireNonNull(method.getParameterList().getParameters()[0].getTypeElement()).getType()).resolve();
-                    new ShowUsagesAction(new SenderFilter(eventClass)).startFindUsages(postMethod, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
+
+                    final PsiAnnotationMemberValue tagPsiElement = Objects.requireNonNull(method.getAnnotation("org.simple.eventbus.Subscriber")).findAttributeValue("tag");
+
+                    new ShowUsagesAction(new SenderFilter(tagPsiElement)).startFindUsages(postMethod, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
+
+
+
+
                 }
             };
-
+    // psiElement is postElement
     private static GutterIconNavigationHandler<PsiElement> SHOW_RECEIVERS =
             (e, psiElement) -> {
                 if (psiElement instanceof PsiMethodCallExpression) {
                     PsiMethodCallExpression expression = (PsiMethodCallExpression) psiElement;
                     PsiType[] expressionTypes = expression.getArgumentList().getExpressionTypes();
                     if (expressionTypes.length > 0) {
-                        PsiClass eventClass = PsiUtils.getClass(expressionTypes[0]);
-                        if (eventClass != null) {
-                            new ShowUsagesAction(new ReceiverFilter()).startFindUsages(eventClass, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
+                        PsiClass messageClass = PsiUtils.getClass(expressionTypes[0]);
+                        // TODO 判断TAG
+
+                        if (messageClass != null) {
+                            new ShowUsagesAction(new ReceiverFilter()).startFindUsages(messageClass, new RelativePoint(e), PsiUtilBase.findEditor(psiElement), MAX_USAGES);
                         }
                     }
                 }
+
             };
+
 
     @Nullable
     @Override

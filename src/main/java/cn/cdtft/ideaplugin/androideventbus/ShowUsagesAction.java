@@ -89,8 +89,6 @@ import java.util.concurrent.TimeoutException;
  * @author john
  * @since 2019-04-13
  */
-
-//@SuppressWarnings("ALL")
 public class ShowUsagesAction extends AnAction implements PopupAction {
     private static final int USAGES_PAGE_SIZE = 100;
 
@@ -138,18 +136,6 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
     private final UsageViewSettings myUsageViewSettings;
     @Nullable
     private Runnable mySearchEverywhereRunnable;
-
-    public ShowUsagesAction() {
-        setInjectedContext(true);
-        final UsageViewSettings usageViewSettings = UsageViewSettings.getInstance();
-        myUsageViewSettings = new UsageViewSettings();
-        myUsageViewSettings.loadState(usageViewSettings);
-        myUsageViewSettings.setGroupByFileStructure(false);
-        myUsageViewSettings.setGroupByModule(false);
-        myUsageViewSettings.setGroupByPackage(false);
-        myUsageViewSettings.setGroupByUsageType(false);
-        myUsageViewSettings.setGroupByScope(false);
-    }
 
     public ShowUsagesAction(Filter filter) {
         this.filter = filter;
@@ -227,6 +213,7 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         HintManager.getInstance().hideHints(HintManager.HIDE_BY_ANY_KEY, false, false);
     }
 
+    // element is postMethod
     void startFindUsages(@NotNull PsiElement element, @NotNull RelativePoint popupPosition, Editor editor, int maxUsages) {
         Project project = element.getProject();
         FindUsagesManager findUsagesManager = ((FindManagerImpl) FindManager.getInstance(project)).getFindUsagesManager();
@@ -251,6 +238,14 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         return options;
     }
 
+    /**
+     * @param handler
+     * @param editor
+     * @param popupPosition
+     * @param maxUsages
+     * @param options
+     */
+    // 显示使用的地方
     private void showElementUsages(@NotNull final FindUsagesHandler handler, final Editor editor,
                                    @NotNull final RelativePoint popupPosition, final int maxUsages,
                                    @NotNull final FindUsagesOptions options) {
@@ -285,7 +280,7 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
             visibleNodes.add(MORE_USAGES_SEPARATOR_NODE);
         }
 
-        addUsageNodes(usageView.getRoot(), usageView, new ArrayList<UsageNode>());
+        addUsageNodes(usageView.getRoot(), usageView, new ArrayList<>());
 
         ScrollingUtil.installActions(table);
 
@@ -646,7 +641,7 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         usageView.addFilteringActions(toolbar);
 
         toolbar.add(UsageGroupingRuleProviderImpl.createGroupByFileStructureAction(usageView));
-        toolbar.add(new AnAction("Open Find Usages Toolwindow", "Show all usages in a separate toolwindow", AllIcons.Toolwindows.ToolWindowFind) {
+        toolbar.add(new AnAction("Open Find Usages Tool Window", "Show all usages in a separate tool window", AllIcons.Toolwindows.ToolWindowFind) {
             {
                 AnAction action = ActionManager.getInstance().getAction(IdeActions.ACTION_FIND_USAGES);
                 setShortcutSet(action.getShortcutSet());
@@ -878,7 +873,7 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         String title = presentation.getTabText();
         String fullTitle = getFullTitle(usages, title, shouldShowMoreSeparator, nodes.size() - (shouldShowMoreSeparator ? 1 : 0), findUsagesInProgress);
 
-        ((AbstractPopup) popup).setCaption(fullTitle);
+        popup.setCaption(fullTitle);
 
         List<UsageNode> data = collectData(usages, nodes, usageView, presentation);
         MyModel tableModel = setTableModel(table, usageView, data);
@@ -1013,25 +1008,17 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         }
         final Project project = handler.getProject();
         //opening editor is performing in invokeLater
-        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(new Runnable() {
+        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(() -> newEditor.getScrollingModel().runActionOnScrollingFinished(new Runnable() {
             @Override
             public void run() {
-                newEditor.getScrollingModel().runActionOnScrollingFinished(new Runnable() {
-                    @Override
-                    public void run() {
-                        // after new editor created, some editor resizing events are still bubbling. To prevent hiding hint, invokeLater this
-                        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (newEditor.getComponent().isShowing()) {
-                                    showHint(hint, newEditor, popupPosition, handler, maxUsages, options);
-                                }
-                            }
-                        });
+                // after new editor created, some editor resizing events are still bubbling. To prevent hiding hint, invokeLater this
+                IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(() -> {
+                    if (newEditor.getComponent().isShowing()) {
+                        showHint(hint, newEditor, popupPosition, handler, maxUsages, options);
                     }
                 });
             }
-        });
+        }));
     }
 
     @Nullable
@@ -1078,7 +1065,6 @@ public class ShowUsagesAction extends AnAction implements PopupAction {
         private final Object myString;
 
         StringNode(Object string) {
-//            super(NullUsage.INSTANCE, new UsageViewTreeModelBuilder(new UsageViewPresentation(), UsageTarget.EMPTY_ARRAY));
             super(null, NullUsage.INSTANCE);
             myString = string;
         }
