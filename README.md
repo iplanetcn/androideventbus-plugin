@@ -3,24 +3,26 @@
 
 > android-studio (3.2.1测试没问题)
 
-## 🔨为 AndroidEventBus 提供快速索引和跳转（目前只支持 AndroidEventBus 1.x 版本）:
+![screenshot](./screenshot/androideventbus-plugin-demo.gif)
+
+### 🔨为 AndroidEventBus 提供快速索引和跳转（目前只支持 AndroidEventBus 1.x 版本）:
     
 - 从 `EventBus.post(Message, TAG)` 到 `@Subscribe`
 - 从 `@Subscribe` 到 `EventBus.post(Message, TAG)`
   
-## 🚀安装方式
+### 🚀安装方式
 
 - Preference -> Plugins -> Browse `AndroidEventBus` -> Select `AndroidEventBus Plugin` -> push Install plugin Btn.
 
 - [Download](https://github.com/iplanetcn/androideventbus-plugin/raw/master/androideventbus-plugin.jar) the plugin jar and select "Install Plugin From Disk" in Android Studio's plugin preferences.
 
-## ⚠️警告
+### ⚠️警告
 目前org.simple:androideventbus库（目前最新版1.0.5.1）已经停止维护，建议更换为[https://github.com/greenrobot/EventBus](https://github.com/greenrobot/EventBus)。
 
-## 说明
-改插件参考了eventbus3-intellij-plugin的源码，并进行了修改和代码优化。
+### 说明
+该插件参考了eventbus3-intellij-plugin的源码，并进行了修改和代码优化。
 
-## License
+### License
 ```
 Copyright [2018] [iplanetcn]
 

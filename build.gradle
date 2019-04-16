@@ -5,13 +5,10 @@ buildscript {
 }
 
 plugins {
+    id 'idea'
     id 'java'
     id 'org.jetbrains.intellij' version '0.4.7'
 }
-
-apply plugin: 'idea'
-apply plugin: 'org.jetbrains.intellij'
-apply plugin: 'java'
 
 group 'cn.tft.teamandroid.jetplugins'
 version '1.0.0'
@@ -21,6 +18,12 @@ targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots/"
+    }
+    maven {
+        url 'https://dl.bintray.com/jetbrains/intellij-plugin-service'
+    }
 }
 
 dependencies {
@@ -31,7 +34,7 @@ dependencies {
 intellij {
     pluginName 'android-eventbus-plugin'
     plugins 'android'
-    version '2018.2.2'
+    version '2018.2'
     type 'Android'
     alternativeIdePath '/Applications/Android Studio.app'
 }
@@ -46,8 +49,8 @@ patchPluginXml {
 
 publishPlugin {
     token ideaPublishToken
-    username username
-    password password
+    username intellijPublishUsername
+    password intellijPublishPassword
     channels 'stable'
     host 'https://plugins.jetbrains.com'
 }
