@@ -34,3 +34,4 @@ Temporary Items
 build/
 .gradle/
 gradle.properties
+.idea/workspace.xml
