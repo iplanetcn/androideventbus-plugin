@@ -36,7 +36,7 @@ intellij {
     plugins 'android'
     version '2018.2'
     type 'Android'
-    alternativeIdePath '/Applications/Android Studio.app'
+//    alternativeIdePath '/Applications/Android Studio.app'
 }
 
 patchPluginXml {
@@ -48,9 +48,7 @@ patchPluginXml {
 }
 
 publishPlugin {
-    token ideaPublishToken
-    username intellijPublishUsername
-    password intellijPublishPassword
+    token 'perm:aXBsYW5ldGNu.dXBsb2FkX2lkZWFfcGx1Z2luX3Rva2Vu.a7PH8PCl1uFZvYZ3p2Ki7OM4RFQZ07'
     channels 'stable'
     host 'https://plugins.jetbrains.com'
 }
