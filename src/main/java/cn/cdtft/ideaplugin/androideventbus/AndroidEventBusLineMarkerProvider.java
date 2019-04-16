@@ -26,7 +26,7 @@ import java.util.Objects;
  * @since 2019-04-13
  */
 public class AndroidEventBusLineMarkerProvider implements LineMarkerProvider {
-    private static final Icon ICON = IconLoader.getIcon("/icons/icon.png");
+    private static final Icon ICON = IconLoader.getIcon("/icons/link.svg");
     private static final int MAX_USAGES = 100;
 
     private static GutterIconNavigationHandler<PsiElement> SHOW_SENDERS =

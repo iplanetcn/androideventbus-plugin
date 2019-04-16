@@ -14,7 +14,7 @@ apply plugin: 'org.jetbrains.intellij'
 apply plugin: 'java'
 
 group 'cn.tft.teamandroid.jetplugins'
-version '1.0'
+version '1.0.0'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -32,14 +32,11 @@ intellij {
     pluginName 'android-eventbus-plugin'
     version '2018.2.2'
     type 'IC'
-//    localPath '/Applications/Android Studio.app'
     alternativeIdePath '/Applications/Android Studio.app'
 }
 
 patchPluginXml {
     changeNotes """
-    <ul>
-      <li>从 <code>EventBus.post(Message, TAG)</code> 到 <code>@Subscribe</code></li>
-      <li>从 <code>@Subscribe</code> 到 <code>EventBus.post(Message, TAG)</code></li>
-    </ul>"""
+    1.0.0
+    First Release"""
 }
