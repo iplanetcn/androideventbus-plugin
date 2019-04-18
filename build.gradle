@@ -7,7 +7,7 @@ buildscript {
 plugins {
     id 'idea'
     id 'java'
-    id 'org.jetbrains.intellij' version '0.4.7'
+    id 'org.jetbrains.intellij' version '0.4.8'
 }
 
 group 'cn.tft.teamandroid.jetplugins'
@@ -32,11 +32,10 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    pluginName 'android-eventbus-plugin'
+    pluginName 'androideventbus-plugin'
     plugins 'android'
-    version '2018.2'
+    version '2018.3'
     type 'Android'
-//    alternativeIdePath '/Applications/Android Studio.app'
 }
 
 patchPluginXml {
