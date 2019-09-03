@@ -27,4 +27,5 @@
     <actions>
         <!-- Add your actions here -->
     </actions>
+    <depends>com.intellij.modules.androidstudio</depends>
 </idea-plugin>
