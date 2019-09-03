@@ -1,7 +1,7 @@
 # androideventbus-plugin
 [![](https://travis-ci.org/iplanetcn/androideventbus-plugin.svg?branch=master)](https://travis-ci.org/iplanetcn/androideventbus-plugin)
 
-> android-studio (3.2.1测试没问题)
+> Android Studio 
 
 ![screenshot](./screenshot/androideventbus-plugin-demo.gif)
 
