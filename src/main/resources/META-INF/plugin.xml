@@ -21,7 +21,7 @@
         <!-- Add your extensions here -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
-                implementationClass="cn.cdtft.ideaplugin.androideventbus.AndroidEventBusLineMarkerProvider"/>
+                implementationClass="cn.cdtft.plugin.aep.AndroidEventBusLineMarkerProvider"/>
     </extensions>
 
     <actions>
