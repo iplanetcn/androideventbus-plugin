@@ -16,20 +16,18 @@
 package cn.cdtft.plugin.aep
 
 import com.intellij.openapi.util.Condition
+import org.jetbrains.annotations.NonNls
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.SwingUtilities
 import kotlin.concurrent.Volatile
 
 /**
- * PingEDT
- *
- * @author john
- * @since 2019-04-13
+ * Created by kgmyshin on 2015/06/07.
  */
-internal class PingEDT(
-    private val myShutUpCondition: Condition<*>,
-    private val myMaxUnitOfWorkThresholdMs: Int, 
-    private val pingAction: Runnable
+class PingEDT(
+    private val myName: @NonNls String, private val myShutUpCondition: Condition<*>,
+//-1 means indefinite
+    private val myMaxUnitOfWorkThresholdMs: Int, private val pingAction: Runnable
 ) {
     @Volatile
     private var stopped = false
@@ -47,16 +45,17 @@ internal class PingEDT(
                 return
             }
             val start = System.currentTimeMillis()
+            var processed = 0
             while (true) {
-                if (!processNext()) {
+                if (processNext()) {
+                    processed++
+                } else {
                     break
                 }
                 val finish = System.currentTimeMillis()
-                if (myMaxUnitOfWorkThresholdMs != -1 && finish - start > myMaxUnitOfWorkThresholdMs) {
-                    break
-                }
+                if (myMaxUnitOfWorkThresholdMs != -1 && finish - start > myMaxUnitOfWorkThresholdMs) break
             }
-            if (!isEmpty) {
+            if (!this.isEmpty) {
                 scheduleUpdate()
             }
         }
@@ -71,20 +70,22 @@ internal class PingEDT(
         return pinged
     }
 
-    /** returns true if invokeLater was called  */
-    fun ping() {
+    // returns true if invokeLater was called
+    fun ping(): Boolean {
         pinged = true
-        scheduleUpdate()
+        return scheduleUpdate()
     }
 
-    /** returns true if invokeLater was called  */
-    private fun scheduleUpdate() {
+    // returns true if invokeLater was called
+    private fun scheduleUpdate(): Boolean {
         if (!stopped && invokeLaterScheduled.compareAndSet(false, true)) {
             SwingUtilities.invokeLater(myUpdateRunnable)
+            return true
         }
+        return false
     }
 
-    private fun stop() {
+    fun stop() {
         stopped = true
     }
 }

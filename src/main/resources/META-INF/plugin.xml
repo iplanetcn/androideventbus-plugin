@@ -2,8 +2,6 @@
     <id>cn.cdtft.plugin.aep</id>
     <name>AndroidEventBus</name>
     <vendor email="iplanetcn@gmail.com" url="https://www.cdtft.cn">TFT Team Android</vendor>
-
-    <depends>org.jetbrains.android</depends>
     <description><![CDATA[
     为 AndroidEventBus 提供快速索引和跳转（目前只支持 AndroidEventBus 1.x 版本）:
     <ul>
@@ -21,14 +19,19 @@
         <!-- Add your extensions here -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
-                implementationClass="cn.cdtft.plugin.aep.AndroidEventBusLineMarkerProvider"/>
+                implementationClass="cn.cdtft.plugin.aep.JavaLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider
-                language="kotlin"
-                implementationClass="cn.cdtft.plugin.aep.AndroidEventBusLineMarkerProvider"/>
+                language="Kotlin"
+                implementationClass="cn.cdtft.plugin.aep.KotlinLineMarkerProvider"/>
+    </extensions>
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true" />
     </extensions>
 
     <actions>
         <!-- Add your actions here -->
     </actions>
     <depends>com.intellij.modules.androidstudio</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>com.intellij.java</depends>
 </idea-plugin>
