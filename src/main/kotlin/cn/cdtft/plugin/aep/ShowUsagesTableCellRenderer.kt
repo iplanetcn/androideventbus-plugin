@@ -46,32 +46,33 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
         row: Int,
         column: Int
     ): Component {
-        val usageNode = if (value is UsageNode) value else null
+        val usageNode = value as? UsageNode
+        val usage = usageNode?.usage
 
-        val usage = if (usageNode == null) null else usageNode.getUsage()
-
-        val panel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0))
+        val flowLayout = FlowLayout(FlowLayout.LEFT, 0, 0)
+        @Suppress("MissingAccessibleContext") 
+        val panel = JPanel(flowLayout)
         val fileBgColor = getBackgroundColor(isSelected, usage)
-        val bg = UIUtil.getListSelectionBackground()
-        val fg = UIUtil.getListSelectionForeground()
-        panel.setBackground(if (isSelected) bg else if (fileBgColor == null) list.getBackground() else fileBgColor)
+        val bg = UIUtil.getListSelectionBackground(false)
+        val fg = UIUtil.getListSelectionForeground(false)
+        panel.setBackground(if (isSelected) bg else fileBgColor ?: list.getBackground())
         panel.setForeground(if (isSelected) fg else list.getForeground())
 
         if (usage == null || usageNode is ShowUsagesAction.StringNode) {
             panel.setLayout(BorderLayout())
             if (column == 0) {
-                panel.add(JLabel("<html><body><b>" + value + "</b></body></html>", SwingConstants.CENTER))
+                panel.add(JLabel("<html><body><b>$value</b></body></html>", SwingConstants.CENTER))
             }
             return panel
         }
 
 
         val textChunks = SimpleColoredComponent()
-        textChunks.setIpad(JBUI.emptyInsets())
+        textChunks.ipad = JBUI.emptyInsets()
         textChunks.setBorder(null)
 
         if (column == 0) {
-            val parent = usageNode!!.getParent() as GroupNode?
+            val parent = usageNode.getParent() as GroupNode?
             appendGroupText(parent, panel, fileBgColor)
             if (usage === ShowUsagesAction.Companion.MORE_USAGES_SEPARATOR) {
                 textChunks.append("...<")
@@ -79,32 +80,32 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
                 textChunks.append(">...")
             }
         } else if (usage !== ShowUsagesAction.Companion.MORE_USAGES_SEPARATOR) {
-            val presentation = usage.getPresentation()
-            val text = presentation.getText()
+            val presentation = usage.presentation
+            val text = presentation.text
 
             if (column == 1) {
-                val icon = presentation.getIcon()
-                textChunks.setIcon(if (icon == null) EmptyIcon.ICON_16 else icon)
+                val icon = presentation.icon
+                textChunks.setIcon(icon ?: EmptyIcon.ICON_16)
                 if (text.size != 0) {
                     val attributes = if (isSelected) SimpleTextAttributes(
                         bg,
                         fg,
                         fg,
                         SimpleTextAttributes.STYLE_ITALIC
-                    ) else deriveAttributesWithColor(text[0].getSimpleAttributesIgnoreBackground(), fileBgColor)
-                    textChunks.append(text[0].getText(), attributes)
+                    ) else deriveAttributesWithColor(text[0].simpleAttributesIgnoreBackground, fileBgColor)
+                    textChunks.append(text[0].text, attributes)
                 }
             } else if (column == 2) {
                 for (i in 1..<text.size) {
                     val textChunk = text[i]
-                    val attrs = textChunk.getSimpleAttributesIgnoreBackground()
+                    val attrs = textChunk.simpleAttributesIgnoreBackground
                     val attributes = if (isSelected) SimpleTextAttributes(
                         bg,
                         fg,
                         fg,
-                        attrs.getStyle()
+                        attrs.style
                     ) else deriveAttributesWithColor(attrs, fileBgColor)
-                    textChunks.append(textChunk.getText(), attributes)
+                    textChunks.append(textChunk.text, attributes)
                 }
             } else {
                 assert(false) { column }
@@ -117,13 +118,13 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
     private fun getBackgroundColor(isSelected: Boolean, usage: Usage?): Color? {
         var fileBgColor: Color? = null
         if (isSelected) {
-            fileBgColor = UIUtil.getListSelectionBackground()
+            fileBgColor = UIUtil.getListSelectionBackground(true)
         } else {
-            val virtualFile = if (usage is UsageInFile) usage.getFile() else null
+            val virtualFile = if (usage is UsageInFile) usage.file else null
             if (virtualFile != null) {
-                val project = myUsageView.getProject()
+                val project = myUsageView.project
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-                if (psiFile != null && psiFile.isValid()) {
+                if (psiFile != null && psiFile.isValid) {
                     val color = FileColorManager.getInstance(project).getRendererBackground(psiFile)
                     if (color != null) {
                         fileBgColor = color
@@ -135,21 +136,23 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
     }
 
     private fun appendGroupText(node: GroupNode?, panel: JPanel, fileBgColor: Color?) {
-        val group = if (node == null) null else node.getGroup()
+        val group = node?.group
         if (group == null) {
             return
         }
-        val parentGroup = node!!.getParent() as GroupNode?
+        val parentGroup = node.getParent() as GroupNode?
         appendGroupText(parentGroup, panel, fileBgColor)
         if (node.canNavigateToSource()) {
             val renderer = SimpleColoredComponent()
 
-            renderer.setIcon(group.getIcon(false))
+            group.icon
+            renderer.setIcon(group.icon)
             val attributes: SimpleTextAttributes =
                 deriveAttributesWithColor(SimpleTextAttributes.REGULAR_ATTRIBUTES, fileBgColor)
-            renderer.append(group.getText(myUsageView), attributes)
+//            renderer.append(group.getText(myUsageView), attributes)
+            renderer.append(group.presentableGroupText, attributes)
             renderer.append(" ", attributes)
-            renderer.setIpad(JBUI.emptyInsets())
+            renderer.ipad = JBUI.emptyInsets()
             renderer.setBorder(null)
             panel.add(renderer)
         }

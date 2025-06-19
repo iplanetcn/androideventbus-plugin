@@ -1,7 +1,7 @@
 # androideventbus-plugin
 [![](https://travis-ci.org/iplanetcn/androideventbus-plugin.svg?branch=master)](https://travis-ci.org/iplanetcn/androideventbus-plugin)
 
-> Android Studio 
+> Android Studio
 
 ![screenshot](./screenshot/androideventbus-plugin-demo.gif)
 
@@ -22,6 +22,10 @@
 ### 说明
 该插件参考了eventbus3-intellij-plugin的源码，并进行了修改和代码优化。
 
+<!-- Plugin description -->
+AndroidEventbus plugin for Android Studio.
+<!-- Plugin description end -->
+
 ### License
 ```
 Copyright [2018] [iplanetcn]
@@ -30,7 +34,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,

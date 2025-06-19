@@ -33,7 +33,6 @@ import com.intellij.find.impl.FindManagerImpl
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.ide.util.gotoByName.ModelDiff
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
@@ -73,7 +72,6 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Rectangle
 import java.awt.event.ActionEvent
-import java.awt.event.ActionListener
 import java.util.*
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -92,8 +90,12 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
     private val myUsageViewSettings: UsageViewSettings
     private var mySearchEverywhereRunnable: Runnable? = null
 
+    override fun getActionUpdateThread(): ActionUpdateThread {
+        return ActionUpdateThread.BGT
+    } 
+    
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.getData<Project?>(PlatformDataKeys.PROJECT)
+        val project = e.getData(PlatformDataKeys.PROJECT)
         if (project == null) {
             return
         }
@@ -107,21 +109,21 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             return
         }
 
-        val popupPosition = JBPopupFactory.getInstance().guessBestPopupLocation(e.getDataContext())
+        val popupPosition = JBPopupFactory.getInstance().guessBestPopupLocation(e.dataContext)
         PsiDocumentManager.getInstance(project).commitAllDocuments()
         FeatureUsageTracker.getInstance().triggerFeatureUsed("navigation.goto.usages")
 
-        val usageTargets = e.getData<Array<UsageTarget?>?>(UsageView.USAGE_TARGETS_KEY)
-        val editor = e.getData<Editor?>(PlatformDataKeys.EDITOR)
+        val usageTargets = e.getData(UsageView.USAGE_TARGETS_KEY)
+        val editor = e.getData(PlatformDataKeys.EDITOR)
         if (usageTargets == null) {
             chooseAmbiguousTargetAndPerform(
-                project, editor,
-                PsiElementProcessor { element: PsiElement? ->
-                    startFindUsages(element!!, popupPosition, editor, USAGES_PAGE_SIZE)
-                    false
-                })
+                project, editor
+            ) { element: PsiElement? ->
+                startFindUsages(element!!, popupPosition, editor, USAGES_PAGE_SIZE)
+                false
+            }
         } else {
-            val element = (usageTargets[0] as PsiElementUsageTarget).getElement()
+            val element = (usageTargets[0] as PsiElementUsageTarget).element
             if (element != null) {
                 startFindUsages(element, popupPosition, editor, USAGES_PAGE_SIZE)
             }
@@ -130,8 +132,8 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
     // element is postMethod
     fun startFindUsages(element: PsiElement, popupPosition: RelativePoint, editor: Editor?, maxUsages: Int) {
-        val project = element.getProject()
-        val findUsagesManager = (FindManager.getInstance(project) as FindManagerImpl).getFindUsagesManager()
+        val project = element.project
+        val findUsagesManager = (FindManager.getInstance(project) as FindManagerImpl).findUsagesManager
         val handler = findUsagesManager.getNewFindUsagesHandler(element, false)
         if (handler == null) {
             return
@@ -162,10 +164,10 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         val usageView =
             manager.createUsageView(UsageTarget.EMPTY_ARRAY, Usage.EMPTY_ARRAY, presentation, null) as UsageViewImpl
 
-        Disposer.register(usageView, Disposable {
+        Disposer.register(usageView) {
             myUsageViewSettings.loadState(usageViewSettings)
             usageViewSettings.loadState(savedGlobalSettings)
-        })
+        }
 
         val usages: MutableList<Usage> = ArrayList<Usage>()
         val visibleNodes: MutableSet<UsageNode?> = LinkedHashSet<UsageNode?>()
@@ -195,9 +197,9 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
         Disposer.register(popup, usageView)
 
-        // show popup only if find usages takes more than 300ms, otherwise it would flicker needlessly
+        // show popup only if you find usages takes more than 300ms, otherwise it would flicker needlessly
         val alarm = Alarm(usageView)
-        alarm.addRequest(Runnable { showPopupIfNeedTo(popup, popupPosition) }, 300)
+        alarm.addRequest({ showPopupIfNeedTo(popup, popupPosition) }, 300)
 
         val pingEDT = PingEDT(Condition { o: Any? -> popup.isDisposed }, 100, Runnable {
             if (popup.isDisposed) {
@@ -216,15 +218,15 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                 addUsageNodes(usageView.root, usageView, nodes)
                 copy = ArrayList<Usage>(usages)
             }
-            rebuildPopup(usageView, copy!!, nodes, table, popup, presentation, popupPosition, !processIcon.isDisposed())
+            rebuildPopup(usageView, copy!!, nodes, table, popup, presentation, popupPosition, !processIcon.isDisposed)
         })
 
         val messageBusConnection = project.messageBus.connect(usageView)
-        messageBusConnection.subscribe<L?>(UsageFilteringRuleProvider.RULES_CHANGED, L { pingEDT.ping() })
-
-
+        @Suppress("UnstableApiUsage")
+        messageBusConnection.subscribe(UsageFilteringRuleProvider.RULES_CHANGED, Runnable { pingEDT.ping() })
+        
         val collect: Processor<Usage?> = object : Processor<Usage?> {
-            private val myUsageTarget = arrayOf<UsageTarget?>(PsiElement2UsageTargetAdapter(handler.getPsiElement()))
+            private val myUsageTarget = arrayOf<UsageTarget?>(PsiElement2UsageTargetAdapter(handler.psiElement, true))
 
             override fun process(usage: Usage?): Boolean {
                 synchronized(usages) {
@@ -261,73 +263,73 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
         val indicator = FindUsagesManager.startProcessUsages(
             handler, handler.primaryElements,
-            handler.secondaryElements, collect, options, Runnable {
-                ApplicationManager.getApplication().invokeLater(
-                    Runnable {
-                        Disposer.dispose(processIcon)
-                        val parent = processIcon.getParent()
-                        parent.remove(processIcon)
-                        parent.repaint()
-                        pingEDT.ping() // repaint title
-                        synchronized(usages) {
-                            if (visibleNodes.isEmpty()) {
-                                if (usages.isEmpty()) {
-                                    val text = UsageViewBundle.message(
-                                        "no.usages.found.in",
+            handler.secondaryElements, collect, options
+        ) {
+            ApplicationManager.getApplication().invokeLater(
+                {
+                    Disposer.dispose(processIcon)
+                    val parent = processIcon.getParent()
+                    parent.remove(processIcon)
+                    parent.repaint()
+                    pingEDT.ping() // repaint title
+                    synchronized(usages) {
+                        if (visibleNodes.isEmpty()) {
+                            if (usages.isEmpty()) {
+                                val text = UsageViewBundle.message(
+                                    "no.usages.found.in",
+                                    searchScopePresentableName(options, project)
+                                )
+                                showHint(text, editor, popupPosition, handler, maxUsages, options)
+                                popup.cancel()
+                            }
+                        } else if (visibleNodes.size == 1) {
+                            if (usages.size == 1) {
+                                //the only usage
+                                val usage = visibleNodes.iterator().next()!!.usage
+                                usage.navigate(true)
+                                popup.cancel()
+                            } else {
+                                assert(usages.size > 1) { usages }
+                                // usage view can filter usages down to one
+                                val visibleUsage = visibleNodes.iterator().next()!!.usage
+                                if (areAllUsagesInOneLine(visibleUsage, usages)) {
+                                    val hint = UsageViewBundle.message(
+                                        "all.usages.are.in.this.line",
+                                        usages.size,
                                         searchScopePresentableName(options, project)
                                     )
-                                    showHint(text, editor, popupPosition, handler, maxUsages, options)
+                                    navigateAndHint(visibleUsage, hint, handler, popupPosition, maxUsages, options)
                                     popup.cancel()
                                 }
-                            } else if (visibleNodes.size == 1) {
-                                if (usages.size == 1) {
-                                    //the only usage
-                                    val usage = visibleNodes.iterator().next()!!.usage
-                                    usage.navigate(true)
-                                    popup.cancel()
-                                } else {
-                                    assert(usages.size > 1) { usages }
-                                    // usage view can filter usages down to one
-                                    val visibleUsage = visibleNodes.iterator().next()!!.usage
-                                    if (areAllUsagesInOneLine(visibleUsage, usages)) {
-                                        val hint = UsageViewBundle.message(
-                                            "all.usages.are.in.this.line",
-                                            usages.size,
-                                            searchScopePresentableName(options, project)
-                                        )
-                                        navigateAndHint(visibleUsage, hint, handler, popupPosition, maxUsages, options)
-                                        popup.cancel()
-                                    }
-                                }
-                            } else {
-                                val title = presentation.tabText
-                                val shouldShowMoreSeparator = visibleNodes.contains(MORE_USAGES_SEPARATOR_NODE)
-                                val fullTitle: String = getFullTitle(
-                                    usages,
-                                    title,
-                                    shouldShowMoreSeparator,
-                                    visibleNodes.size - (if (shouldShowMoreSeparator) 1 else 0),
-                                    false
-                                )
-                                popup.setCaption(fullTitle)
                             }
+                        } else {
+                            val title = presentation.tabText
+                            val shouldShowMoreSeparator = visibleNodes.contains(MORE_USAGES_SEPARATOR_NODE)
+                            val fullTitle: String = getFullTitle(
+                                usages,
+                                title,
+                                shouldShowMoreSeparator,
+                                visibleNodes.size - (if (shouldShowMoreSeparator) 1 else 0),
+                                false
+                            )
+                            popup.setCaption(fullTitle)
                         }
-                    }, project.getDisposed()
-                )
-            })
-        Disposer.register(popup, Disposable { indicator.cancel() })
+                    }
+                }, project.disposed
+            )
+        }
+        Disposer.register(popup) { indicator.cancel() }
     }
 
     private fun transform(usage: Usage): Usage {
         return usage
     }
 
-    private class MyModel(data: MutableList<UsageNode?>, cols: Int) : ListTableModel<UsageNode?>(cols(cols), data, 0),
-        ModelDiff.Model<Any?> {
+    private class MyModel(data: MutableList<UsageNode?>, cols: Int) : ListTableModel<UsageNode?>(cols(cols), data, 0), ModelDiff.Model<Any> {
         override fun addToModel(idx: Int, element: Any) {
-            val node = if (element is UsageNode) element else createStringNode(element)
+            val node = element as? UsageNode ?: createStringNode(element)
 
-            if (idx < getRowCount()) {
+            if (idx < rowCount) {
                 insertRow(idx, node)
             } else {
                 addRow(node)
@@ -347,8 +349,8 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                         return node
                     }
                 }
-                val list = Collections.nCopies<ColumnInfo<UsageNode?, UsageNode?>?>(cols, o)
-                return list.toTypedArray<ColumnInfo<*, *>?>()
+                val list = Collections.nCopies(cols, o)
+                return list.toTypedArray<ColumnInfo<*, *>>()
             }
         }
     }
@@ -362,7 +364,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         options: FindUsagesOptions
     ) {
         val label = createHintComponent(text, handler, popupPosition, editor, maxUsages, options)
-        if (editor == null || editor.isDisposed()) {
+        if (editor == null || editor.isDisposed) {
             HintManager.getInstance().showHint(
                 label, popupPosition, HintManager.HIDE_BY_ANY_KEY or
                         HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_SCROLLING, 0
@@ -380,13 +382,12 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         maxUsages: Int,
         options: FindUsagesOptions
     ): JComponent {
-        val label: JComponent =
-            HintUtil.createInformationLabel(suggestSecondInvocation(options, handler, text + "&nbsp;"))
+        val label: JComponent = HintUtil.createInformationLabel(suggestSecondInvocation(options, handler, "$text&nbsp;"))
         val button = createSettingsButton(handler, popupPosition, editor, maxUsages, HIDE_HINTS_ACTION)
 
         val panel: JPanel = object : JPanel(BorderLayout()) {
             override fun addNotify() {
-                mySearchEverywhereRunnable = Runnable? {
+                mySearchEverywhereRunnable = Runnable {
                     searchEverywhere(
                         options,
                         handler,
@@ -426,19 +427,19 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             shortcutText = "(" + KeymapUtil.getShortcutText(shortcut) + ")"
         }
         return InplaceButton(
-            "Settings..." + shortcutText,
-            AllIcons.General.Settings,
-            ActionListener { e: ActionEvent? ->
-                SwingUtilities.invokeLater(Runnable {
-                    showDialogAndFindUsages(
-                        handler,
-                        popupPosition,
-                        editor,
-                        maxUsages
-                    )
-                })
-                cancelAction.run()
-            })
+            "Settings...$shortcutText",
+            AllIcons.General.Settings
+        ) { e: ActionEvent? ->
+            SwingUtilities.invokeLater {
+                showDialogAndFindUsages(
+                    handler,
+                    popupPosition,
+                    editor,
+                    maxUsages
+                )
+            }
+            cancelAction.run()
+        }
     }
 
     private fun showDialogAndFindUsages(
@@ -449,7 +450,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
     ) {
         val dialog = handler.getFindUsagesDialog(false, false, false)
         dialog.show()
-        if (dialog.isOK()) {
+        if (dialog.isOK) {
             dialog.calcFindUsagesOptions()
             showElementUsages(handler, editor, popupPosition, maxUsages, getDefaultOptions(handler))
         }
@@ -469,7 +470,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         processIcon: AsyncProcessIcon,
         hadMoreSeparator: Boolean
     ): JBPopup {
-        table.setRowHeight(PlatformIcons.CLASS_ICON.getIconHeight() + 2)
+        table.setRowHeight(PlatformIcons.CLASS_ICON.iconHeight + 2)
         table.setShowGrid(false)
         table.setShowVerticalLines(false)
         table.setShowHorizontalLines(false)
@@ -478,7 +479,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         table.setIntercellSpacing(Dimension(0, 0))
 
         val builder: PopupChooserBuilder<*> = PopupChooserBuilder<Any?>(table)
-        val title = presentation.getTabText()
+        val title = presentation.tabText
         if (title != null) {
             val result: String = getFullTitle(usages, title, hadMoreSeparator, visibleNodes.size - 1, true)
             builder.setTitle(result)
@@ -486,43 +487,42 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         builder.setMovable(true).setResizable(true)
-        builder.setItemChoosenCallback(Runnable {
-            val selected = table.getSelectedRows()
+        builder.setItemChosenCallback(Runnable {
+            val selected = table.selectedRows
             for (i in selected) {
                 val value = table.getValueAt(i, 0)
                 if (value is UsageNode) {
-                    val usage = value.getUsage()
+                    val usage = value.usage
                     if (usage === MORE_USAGES_SEPARATOR) {
                         appendMoreUsages(editor, popupPosition, handler, maxUsages)
-                        return@setItemChoosenCallback
+                        return@Runnable
                     }
                     navigateAndHint(usage, null, handler, popupPosition, maxUsages, options)
                 }
             }
         })
-        val popup: Array<JBPopup> = arrayOfNulls<JBPopup>(1)
-
+        val popup: Array<JBPopup?> = arrayOfNulls(1)
         var shortcut = UsageViewImpl.getShowUsagesWithSettingsShortcut()
         if (shortcut != null) {
             object : DumbAwareAction() {
-                override fun actionPerformed(e: AnActionEvent?) {
-                    popup[0].cancel()
+                override fun actionPerformed(e: AnActionEvent) {
+                    popup[0]?.cancel()
                     showDialogAndFindUsages(handler, popupPosition, editor, maxUsages)
                 }
-            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
+            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.firstKeyStroke), table)
         }
         shortcut = showUsagesShortcut
         if (shortcut != null) {
             object : DumbAwareAction() {
-                override fun actionPerformed(e: AnActionEvent?) {
-                    popup[0].cancel()
+                override fun actionPerformed(e: AnActionEvent) {
+                    popup[0]?.cancel()
                     searchEverywhere(options, handler, editor, popupPosition, maxUsages)
                 }
-            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
+            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.firstKeyStroke), table)
         }
 
         val settingsButton =
-            createSettingsButton(handler, popupPosition, editor, maxUsages, Runnable { popup[0].cancel() })
+            createSettingsButton(handler, popupPosition, editor, maxUsages) { popup[0]?.cancel() }
 
         val spinningProgress: ActiveComponent = object : ActiveComponent {
             override fun setActive(active: Boolean) {
@@ -537,7 +537,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         val toolbar = DefaultActionGroup()
         usageView.addFilteringActions(toolbar)
 
-        toolbar.add(UsageGroupingRuleProviderImpl.createGroupByFileStructureAction(usageView))
+        toolbar.add(UsageGroupingRuleProviderImpl().createGroupingActions(usageView).first())
         toolbar.add(object : AnAction(
             "Open Find Usages Tool Window",
             "Show all usages in a separate tool window",
@@ -545,31 +545,32 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         ) {
             init {
                 val action = ActionManager.getInstance().getAction(IdeActions.ACTION_FIND_USAGES)
-                setShortcutSet(action.getShortcutSet())
+                @Suppress("UnstableApiUsage")
+                shortcutSet = action.shortcutSet
             }
 
-            override fun actionPerformed(e: AnActionEvent?) {
+            override fun actionPerformed(e: AnActionEvent) {
                 hideHints()
-                popup[0].cancel()
+                popup[0]?.cancel()
                 val findUsagesManager =
-                    (FindManager.getInstance(usageView.getProject()) as FindManagerImpl).getFindUsagesManager()
+                    (FindManager.getInstance(usageView.project) as FindManagerImpl).findUsagesManager
 
                 findUsagesManager.findUsages(
-                    handler.getPrimaryElements(), handler.getSecondaryElements(), handler, options,
-                    FindSettings.getInstance().isSkipResultsWithOneUsage()
+                    handler.primaryElements, handler.secondaryElements, handler, options,
+                    FindSettings.getInstance().isSkipResultsWithOneUsage
                 )
             }
         })
 
         val actionToolbar =
             ActionManager.getInstance().createActionToolbar(ActionPlaces.USAGE_VIEW_TOOLBAR, toolbar, true)
-        actionToolbar.setReservePlaceAutoPopupIcon(false)
-        val toolBar = actionToolbar.getComponent()
+        actionToolbar.isReservePlaceAutoPopupIcon = false
+        val toolBar = actionToolbar.component
         toolBar.setOpaque(false)
         builder.setSettingButton(toolBar)
 
         popup[0] = builder.createPopup()
-        val content = popup[0].getContent()
+        val content = popup[0]?.content
 
         if (title != null) {
             myWidth = ((toolBar.getPreferredSize().getWidth()
@@ -582,15 +583,15 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                     true
                 )
             ).getPreferredSize().getWidth()
-                    + settingsButton.getPreferredSize().getWidth())).toInt()
+                    + settingsButton.preferredSize.getWidth())).toInt()
         }
         myWidth = -1
         for (action in toolbar.getChildren(null)) {
-            action.unregisterCustomShortcutSet(usageView.getComponent())
-            action.registerCustomShortcutSet(action.getShortcutSet(), content)
+            action.unregisterCustomShortcutSet(usageView.component)
+            action.registerCustomShortcutSet(action.shortcutSet, content)
         }
 
-        return popup[0]
+        return popup[0]!!
     }
 
     private fun searchEverywhere(
@@ -609,7 +610,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
     init {
         setInjectedContext(true)
-        val usageViewSettings: UsageViewSettings = UsageViewSettings.getInstance()
+        val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
         myUsageViewSettings = UsageViewSettings()
         myUsageViewSettings.loadState(usageViewSettings)
         myUsageViewSettings.isGroupByFileStructure = false
@@ -637,7 +638,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             nodes.add(MORE_USAGES_SEPARATOR_NODE)
         }
 
-        val title = presentation.getTabText()
+        val title = presentation.tabText
         val fullTitle: String = getFullTitle(
             usages,
             title,
@@ -650,14 +651,14 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
         val data: MutableList<UsageNode?> = collectData(usages, nodes, usageView, presentation)
         val tableModel: MyModel = setTableModel(table, usageView, data)
-        val existingData = tableModel.getItems()
+        val existingData = tableModel.items
 
-        val row = table.getSelectedRow()
+        val row = table.selectedRow
 
         var newSelection: Int = updateModel(tableModel, existingData, data, if (row == -1) 0 else row)
-        if (newSelection < 0 || newSelection >= tableModel.getRowCount()) {
+        if (newSelection < 0 || newSelection >= tableModel.rowCount) {
             TableUtil.ensureSelectionExists(table)
-            newSelection = table.getSelectedRow()
+            newSelection = table.selectedRow
         } else {
             table.getSelectionModel().setSelectionInterval(newSelection, newSelection)
         }
@@ -672,13 +673,13 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         popupPosition: RelativePoint,
         data: MutableList<UsageNode?>
     ) {
-        val content = popup.getContent()
+        val content = popup.content
         val window = SwingUtilities.windowForComponent(content)
-        val d = window.getSize()
+        val d = window.size
 
         var width: Int = calcMaxWidth(table)
         width = max(d.getWidth(), width.toDouble()).toInt()
-        val headerSize = (popup as AbstractPopup).getHeaderPreferredSize()
+        val headerSize = (popup as AbstractPopup).headerPreferredSize
         width = max(headerSize.getWidth().toInt(), width)
         width = max(myWidth, width)
 
@@ -692,24 +693,24 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         val rowsToShow = min(30, data.size)
         var dimension = Dimension(newWidth, table.getRowHeight() * rowsToShow)
         val rectangle: Rectangle = fitToScreen(dimension, popupPosition, table)
-        dimension = rectangle.getSize()
-        val location = window.getLocation()
-        if (location != rectangle.getLocation()) {
-            window.setLocation(rectangle.getLocation())
+        dimension = rectangle.size
+        val location = window.location
+        if (location != rectangle.location) {
+            window.location = rectangle.location
         }
 
         if (!data.isEmpty()) {
             TableUtil.ensureSelectionExists(table)
         }
-        table.setSize(dimension)
+        table.size = dimension
 
-        val footerSize = popup.getFooterPreferredSize()
+        val footerSize = popup.footerPreferredSize
 
         /* invisible borders, margins etc*/
         val newHeight = (dimension.height + headerSize.getHeight() + footerSize.getHeight()).toInt() + 4
         val newDim = Dimension(dimension.width, newHeight)
-        window.setSize(newDim)
-        window.setMinimumSize(newDim)
+        window.size = newDim
+        window.minimumSize = newDim
         window.setMaximumSize(newDim)
 
         window.validate()
@@ -728,14 +729,14 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
     }
 
     private fun addUsageNodes(root: GroupNode, usageView: UsageViewImpl, outNodes: MutableList<UsageNode?>) {
-        for (node in root.getUsageNodes()) {
-            val usage = node.getUsage()
+        for (node in root.usageNodes) {
+            val usage = node.usage
             if (usageView.isVisible(usage)) {
                 node.setParent(root)
                 outNodes.add(node)
             }
         }
-        for (groupNode in root.getSubGroups()) {
+        for (groupNode in root.subGroups) {
             groupNode.setParent(root)
             addUsageNodes(groupNode, usageView, outNodes)
         }
@@ -761,29 +762,29 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         if (newEditor == null) {
             return
         }
-        val project = handler.getProject()
-        //opening editor is performing in invokeLater
-        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(Runnable {
-            newEditor.getScrollingModel().runActionOnScrollingFinished(
-                Runnable {
-                    // after new editor created, some editor resizing events are still bubbling. To prevent hiding hint, invokeLater this
-                    IdeFocusManager.getInstance(project).doWhenFocusSettlesDown(Runnable {
-                        if (newEditor.getComponent().isShowing()) {
-                            showHint(hint, newEditor, popupPosition, handler, maxUsages, options)
-                        }
-                    })
-                })
-        })
+        // val project = handler.project
+        // opening editor is performing in invokeLater
+        ApplicationManager.getApplication().invokeLater {
+            newEditor.scrollingModel.runActionOnScrollingFinished {
+                // after new editor created, some editor resizing events are still bubbling. To prevent hiding hint, invokeLater this
+                ApplicationManager.getApplication().invokeLater {
+                    if (newEditor.component.isShowing()) {
+                        showHint(hint, newEditor, popupPosition, handler, maxUsages, options)
+                    }
+                }
+            }
+        }
     }
 
+    @Suppress("JComponentDataProvider")
     private class MyTable : JTable(), DataProvider {
         override fun getScrollableTracksViewportWidth(): Boolean {
             return true
         }
 
-        override fun getData(dataId: @NonNls String?): Any? {
+        override fun getData(dataId: @NonNls String): Any? {
             if (LangDataKeys.PSI_ELEMENT.`is`(dataId)) {
-                val selected = getSelectedRows()
+                val selected = selectedRows
                 if (selected.size == 1) {
                     return getPsiElementForHint(getValueAt(selected[0], 0))
                 }
@@ -793,12 +794,12 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
         fun getPsiElementForHint(selectedValue: Any?): PsiElement? {
             if (selectedValue is UsageNode) {
-                val usage = selectedValue.getUsage()
+                val usage = selectedValue.usage
                 if (usage is UsageInfo2UsageAdapter) {
-                    val element = usage.getElement()
+                    val element = usage.element
                     if (element != null) {
                         val view = UsageToPsiElementProvider.findAppropriateParentFrom(element)
-                        return if (view == null) element else view
+                        return view ?: element
                     }
                 }
             }
@@ -806,6 +807,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
     }
 
+    @Suppress("UnstableApiUsage")
     internal class StringNode(private val myString: Any) : UsageNode(null, NullUsage.INSTANCE) {
         override fun toString(): String {
             return myString.toString()
@@ -814,15 +816,18 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
     private class MySpeedSearch(table: MyTable) : SpeedSearchBase<JTable?>(table) {
         override fun getSelectedIndex(): Int {
-            return this.table!!.getSelectedRow()
+            return this.table!!.selectedRow
         }
 
+        @Suppress("removal")
         override fun convertIndexToModel(viewIndex: Int): Int {
             return this.table!!.convertRowIndexToModel(viewIndex)
         }
 
-        override fun getAllElements(): Array<Any> {
-            return (this.table!!.getModel() as MyModel).getItems().toTypedArray()
+
+        @Suppress("removal")
+        override fun getAllElements(): Array<UsageNode?> {
+            return (this.table!!.model as MyModel).items.toTypedArray()
         }
 
         override fun getElementText(element: Any): String? {
@@ -833,16 +838,16 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             if (node is StringNode) {
                 return ""
             }
-            val usage = node.getUsage()
+            val usage = node.usage
             if (usage === MORE_USAGES_SEPARATOR) {
                 return ""
             }
             val group = node.getParent() as GroupNode?
-            return usage.getPresentation().getPlainText() + group
+            return usage.presentation.plainText + group
         }
 
         override fun selectElement(element: Any?, selectedText: String?) {
-            val data = (this.table!!.getModel() as MyModel).getItems()
+            val data = (this.table!!.model as MyModel).items
             if (element is UsageNode) {
                 val i = data.indexOf(element)
                 if (i == -1) {
@@ -872,8 +877,8 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             if (c2 is StringNode) {
                 return@Comparator -1
             }
-            val o1 = c1!!.getUsage()
-            val o2 = c2!!.getUsage()
+            val o1 = c1!!.usage
+            val o2 = c2!!.usage
             if (o1 === MORE_USAGES_SEPARATOR) {
                 return@Comparator 1
             }
@@ -883,19 +888,20 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
 
             val v1 = UsageListCellRenderer.getVirtualFile(o1)
             val v2 = UsageListCellRenderer.getVirtualFile(o2)
-            val name1 = if (v1 == null) null else v1.getName()
-            val name2 = if (v2 == null) null else v2.getName()
-            val i = Comparing.compare<String?>(name1, name2)
+            val name1 = v1?.name
+            val name2 = v2?.name
+            val i = Comparing.compare<String>(name1, name2)
             if (i != 0) {
                 return@Comparator i
             }
 
             if (o1 is Comparable<*> && o2 is Comparable<*>) {
-                return@Comparator (o1 as Comparable<*>).compareTo(o2)
+                @Suppress("UNCHECKED_CAST")
+                return@Comparator (o1 as Comparable<Any>).compareTo(o2)
             }
 
-            val loc1 = o1.getLocation()
-            val loc2 = o2.getLocation()
+            val loc1 = o1.location
+            val loc2 = o2.location
             Comparing.compare<FileEditorLocation?>(loc1, loc2)
         }
         private val HIDE_HINTS_ACTION = Runnable { hideHints() }
@@ -910,19 +916,19 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                     CommonBundle.getErrorTitle(), Messages.getErrorIcon()
                 )
             } else {
-                val offset = editor.getCaretModel().getOffset()
+                val offset = editor.caretModel.offset
                 val chosen = GotoDeclarationAction.chooseAmbiguousTarget(
                     editor, offset, processor,
                     FindBundle.message("find.usages.ambiguous.title", "crap"), null
                 )
                 if (!chosen) {
                     ApplicationManager.getApplication().invokeLater(Runnable {
-                        if (editor.isDisposed() || !editor.getComponent().isShowing()) {
-                            return@invokeLater
+                        if (editor.isDisposed || !editor.component.isShowing()) {
+                            return@Runnable
                         }
                         HintManager.getInstance()
                             .showErrorHint(editor, FindBundle.message("find.no.usages.at.cursor.error"))
-                    }, project.getDisposed())
+                    }, project.disposed)
                 }
             }
         }
@@ -933,10 +939,10 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun getDefaultOptions(handler: FindUsagesHandler): FindUsagesOptions {
-            var options: FindUsagesOptions = null
+            var options: FindUsagesOptions? = null
             try {
                 options = handler.getFindUsagesOptions(
-                    DataManager.getInstance().getDataContextFromFocusAsync().blockingGet(5, TimeUnit.SECONDS)
+                    DataManager.getInstance().dataContextFromFocusAsync.blockingGet(5, TimeUnit.SECONDS)
                 )
             } catch (e: TimeoutException) {
                 e.printStackTrace()
@@ -954,7 +960,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun showPopupIfNeedTo(popup: JBPopup, popupPosition: RelativePoint): Boolean {
-            if (!popup.isDisposed() && !popup.isVisible()) {
+            if (!popup.isDisposed && !popup.isVisible) {
                 popup.show(popupPosition)
                 return true
             } else {
@@ -963,7 +969,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun searchScopePresentableName(options: FindUsagesOptions, project: Project): String {
-            return notNullizeScope(options, project).getDisplayName()
+            return notNullizeScope(options, project).displayName
         }
 
         private fun notNullizeScope(options: FindUsagesOptions, project: Project): SearchScope {
@@ -981,17 +987,15 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             visibleNodesCount: Int,
             findUsagesInProgress: Boolean
         ): String {
-            val s: String
-            if (hadMoreSeparator) {
-                s =
-                    "<b>Some</b> " + title + " " + "<b>(Only " + visibleNodesCount + " usages shown" + (if (findUsagesInProgress) " so far" else "") + ")</b>"
+            val s: String = if (hadMoreSeparator) {
+                "<b>Some</b> " + title + " " + "<b>(Only " + visibleNodesCount + " usages shown" + (if (findUsagesInProgress) " so far" else "") + ")</b>"
             } else {
-                s = title + " (" + UsageViewBundle.message(
+                "$title (" + UsageViewBundle.message(
                     "usages.n",
                     usages.size
                 ) + (if (findUsagesInProgress) " so far" else "") + ")"
             }
-            return "<html><nobr>" + s + "</nobr></html>"
+            return "<html><nobr>$s</nobr></html>"
         }
 
         private fun suggestSecondInvocation(
@@ -1003,16 +1007,16 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             val title: String? = getSecondInvocationTitle(options, handler)
 
             if (title != null) {
-                text += "<br><small>Press " + title + "</small>"
+                text += "<br><small>Press $title</small>"
             }
-            return "<html><body>" + text + "</body></html>"
+            return "<html><body>$text</body></html>"
         }
 
         private fun getSecondInvocationTitle(options: FindUsagesOptions, handler: FindUsagesHandler): String? {
             if (showUsagesShortcut != null) {
                 val maximalScope = FindUsagesManager.getMaximalScope(handler)
-                if (notNullizeScope(options, handler.getProject()) != maximalScope) {
-                    return "Press " + KeymapUtil.getShortcutText(showUsagesShortcut!!) + " again to search in " + maximalScope.getDisplayName()
+                if (notNullizeScope(options, handler.project) != maximalScope) {
+                    return "Press " + KeymapUtil.getShortcutText(showUsagesShortcut!!) + " again to search in " + maximalScope.displayName
                 }
             }
             return null
@@ -1035,11 +1039,11 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             if (usage !is UsageInfo2UsageAdapter) {
                 return -1
             }
-            val element = usage.getElement()
+            val element = usage.element
             if (element == null) {
                 return -1
             }
-            return element.getTextRange().getStartOffset()
+            return element.textRange.startOffset
         }
 
         private fun areAllUsagesInOneLine(visibleUsage: Usage, usages: MutableList<Usage>): Boolean {
@@ -1051,7 +1055,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             if (offset == -1) {
                 return false
             }
-            val lineNumber = editor.getDocument().getLineNumber(offset)
+            val lineNumber = editor.document.getLineNumber(offset)
             for (other in usages) {
                 val otherEditor: Editor? = getEditorFor(other)
                 if (otherEditor !== editor) {
@@ -1061,7 +1065,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                 if (otherOffset == -1) {
                     return false
                 }
-                val otherLine = otherEditor.getDocument().getLineNumber(otherOffset)
+                val otherLine = otherEditor.document.getLineNumber(otherOffset)
                 if (otherLine != lineNumber) {
                     return false
                 }
@@ -1076,13 +1080,13 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         ): MyModel {
             ApplicationManager.getApplication().assertIsDispatchThread()
             val columnCount: Int = calcColumnCount(data)
-            var model = if (table.getModel() is MyModel) table.getModel() as MyModel? else null
-            if (model == null || model.getColumnCount() != columnCount) {
+            var model = if (table.model is MyModel) table.model as MyModel? else null
+            if (model == null || model.columnCount != columnCount) {
                 model = MyModel(data, columnCount)
                 table.setModel(model)
 
                 val renderer = ShowUsagesTableCellRenderer(usageView)
-                for (i in 0..<table.getColumnModel().getColumnCount()) {
+                for (i in 0..<table.getColumnModel().columnCount) {
                     val column = table.getColumnModel().getColumn(i)
                     column.setCellRenderer(renderer)
                 }
@@ -1091,7 +1095,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun calcColumnCount(data: MutableList<UsageNode?>): Int {
-            return if (data.isEmpty() || data.get(0) is StringNode) 1 else 3
+            return if (data.isEmpty() || data[0] is StringNode) 1 else 3
         }
 
         private fun collectData(
@@ -1110,17 +1114,17 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
                 val progressText = UsageViewManagerImpl.getProgressTitle(presentation)
                 data.add(createStringNode(progressText))
             }
-            data.sort(USAGE_NODE_COMPARATOR)
+            data.sortWith(USAGE_NODE_COMPARATOR)
             return data
         }
 
         private fun calcMaxWidth(table: JTable): Int {
-            val colsNum = table.getColumnModel().getColumnCount()
+            val colsNum = table.getColumnModel().columnCount
 
             var totalWidth = 0
             for (col in 0..<colsNum - 1) {
                 val column = table.getColumnModel().getColumn(col)
-                val preferred = column.getPreferredWidth()
+                val preferred = column.preferredWidth
                 val width = max(preferred, columnMaxWidth(table, col))
                 totalWidth += width
                 column.setMinWidth(width)
@@ -1140,8 +1144,8 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
             for (row in 0..<table.getRowCount()) {
                 val component = table.prepareRenderer(column.getCellRenderer(), row, col)
 
-                val rendererWidth = component.getPreferredSize().width
-                width = max(width, rendererWidth + table.getIntercellSpacing().width)
+                val rendererWidth = component.preferredSize.width
+                width = max(width, rendererWidth + table.intercellSpacing.width)
             }
             return width
         }
@@ -1154,7 +1158,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         ): Int {
             val oa = listOld.toTypedArray<UsageNode?>()
             val na = listNew.toTypedArray<UsageNode?>()
-            val cmds = ModelDiff.createDiffCmds<Any?>(tableModel, oa, na)
+            val cmds = ModelDiff.createDiffCmds(tableModel, oa, na)
             var selection = oldSelection
             if (cmds != null) {
                 for (cmd in cmds) {
@@ -1166,7 +1170,7 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun fitToScreen(newDim: Dimension, popupPosition: RelativePoint, table: JTable): Rectangle {
-            val rectangle = Rectangle(popupPosition.getScreenPoint(), newDim)
+            val rectangle = Rectangle(popupPosition.screenPoint, newDim)
             ScreenUtil.fitToScreen(rectangle)
             if (rectangle.getHeight() != newDim.getHeight()) {
                 val newHeight = rectangle.getHeight().toInt()
@@ -1177,9 +1181,9 @@ class ShowUsagesAction internal constructor(private val filter: Filter) : AnActi
         }
 
         private fun getEditorFor(usage: Usage): Editor? {
-            val location = usage.getLocation()
-            val newFileEditor = if (location == null) null else location.getEditor()
-            return if (newFileEditor is TextEditor) newFileEditor.getEditor() else null
+            val location = usage.location
+            val newFileEditor = location?.editor
+            return if (newFileEditor is TextEditor) newFileEditor.editor else null
         }
     }
 }

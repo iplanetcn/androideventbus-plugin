@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>cn.cdtft.ideaplugin.androideventbus</id>
+    <id>cn.cdtft.plugin.aep</id>
     <name>AndroidEventBus</name>
-    <vendor email="iplanetcn@gmail.com" url="http://www.cdtft.cn">TFT Team Android</vendor>
+    <vendor email="iplanetcn@gmail.com" url="https://www.cdtft.cn">TFT Team Android</vendor>
 
     <depends>org.jetbrains.android</depends>
     <description><![CDATA[
@@ -21,6 +21,9 @@
         <!-- Add your extensions here -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
+                implementationClass="cn.cdtft.plugin.aep.AndroidEventBusLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider
+                language="kotlin"
                 implementationClass="cn.cdtft.plugin.aep.AndroidEventBusLineMarkerProvider"/>
     </extensions>
 

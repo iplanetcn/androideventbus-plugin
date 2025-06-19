@@ -1,7 +1,14 @@
 package cn.cdtft.plugin.aep
 
+import com.intellij.psi.PsiAnnotationMemberValue
+import com.intellij.psi.PsiCallExpression
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
-import java.util.*
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifierList
+import com.intellij.psi.PsiParameter
+import com.intellij.psi.PsiType
 
 /**
  * PsiUtils
@@ -10,9 +17,9 @@ import java.util.*
  * @since 2019-04-13
  */
 internal object PsiUtils {
-    fun getClass(psiType: PsiType): PsiClass? {
+    fun getClass(psiType: PsiType?): PsiClass? {
         if (psiType is PsiClassType) {
-            return (psiType as PsiClassType).resolve()
+            return psiType.resolve()
         }
         return null
     }
@@ -22,10 +29,10 @@ internal object PsiUtils {
      */
     fun isEventBusReceiver(psiElement: PsiElement?): Boolean {
         if (psiElement is PsiMethod) {
-            val method: PsiMethod = psiElement as PsiMethod
-            val modifierList: PsiModifierList = method.getModifierList()
-            for (psiAnnotation in modifierList.getAnnotations()) {
-                if (psiAnnotation.getQualifiedName() == "org.simple.eventbus.Subscriber") {
+            val method: PsiMethod = psiElement
+            val modifierList: PsiModifierList = method.modifierList
+            for (psiAnnotation in modifierList.annotations) {
+                if (psiAnnotation.qualifiedName == "org.simple.eventbus.Subscriber") {
                     val tag: PsiAnnotationMemberValue? = psiAnnotation.findAttributeValue("tag")
                     if (tag != null) {
                         return true
@@ -41,16 +48,16 @@ internal object PsiUtils {
      */
     fun isEventBusPost(psiElement: PsiElement?): Boolean {
         if (psiElement is PsiCallExpression) {
-            val callExpression: PsiCallExpression = psiElement as PsiCallExpression
+            val callExpression: PsiCallExpression = psiElement
             val method: PsiMethod? = callExpression.resolveMethod()
             if (method != null) {
-                val name: String? = method.getName()
-                val parent: PsiElement? = method.getParent()
+                val name: String? = method.name
+                val parent: PsiElement? = method.parent
                 if ("post" == name && parent is PsiClass) {
-                    val postParameters: Array<PsiParameter> = method.getParameterList().getParameters()
+                    val postParameters: Array<PsiParameter> = method.parameterList.parameters
                     for (param in postParameters) {
-                        if (param.getName() == "tag") {
-                            val implClass: PsiClass = parent as PsiClass
+                        if (param.name == "tag") {
+                            val implClass: PsiClass = parent
                             return isEventBusClass(implClass) || isSuperClassEventBus(implClass)
                         }
                     }
@@ -64,24 +71,20 @@ internal object PsiUtils {
      * 判断是否为EventBus类
      */
     private fun isEventBusClass(psiClass: PsiClass): Boolean {
-        try {
-            return "EventBus" == Objects.requireNonNull<T?>(psiClass.getName())
-        } catch (e: Exception) {
-            return false
-        }
+        return "EventBus" == psiClass.name
     }
 
     /**
      * 判断是否为EventBus的超类
      */
     private fun isSuperClassEventBus(psiClass: PsiClass): Boolean {
-        val supers: Array<PsiClass> = psiClass.getSupers()
-        if (supers.size == 0) {
+        val supers: Array<PsiClass> = psiClass.supers
+        if (supers.isEmpty()) {
             return false
         }
         for (superClass in supers) {
             try {
-                if ("EventBus" == superClass.getName()) {
+                if ("EventBus" == superClass.name) {
                     return true
                 }
             } catch (e: Exception) {
