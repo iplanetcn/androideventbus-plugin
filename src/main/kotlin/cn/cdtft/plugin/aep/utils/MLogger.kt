@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NonNls
 /**
  * Created by likfe on 2018/3/2.
  */
+@Suppress("UnstableApiUsage")
 class MLogger : Logger() {
     override fun isDebugEnabled(): Boolean {
         return MLog.DEBUG

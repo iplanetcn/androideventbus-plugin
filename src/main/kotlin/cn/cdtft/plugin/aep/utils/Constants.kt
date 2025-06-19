@@ -1,6 +1,7 @@
 package cn.cdtft.plugin.aep.utils
 
-import com.intellij.openapi.util.IconLoader.getIcon
+import cn.cdtft.plugin.aep.ShowUsagesAction
+import com.intellij.openapi.util.IconLoader
 import javax.swing.Icon
 
 /**
@@ -10,7 +11,7 @@ object Constants {
     const val IS_DEBUG: Boolean = true
 
     const val ICON_PATH: String = "/icons/link.svg"
-    val ICON: Icon = getIcon(ICON_PATH, Icon::class.java)
+    val ICON: Icon = IconLoader.getIcon(ICON_PATH, ShowUsagesAction::class.java)
     const val MAX_USAGES: Int = 100
     const val FUN_START: String = "EventBus.getDefault()"
     const val FUN_NAME: String = "post"

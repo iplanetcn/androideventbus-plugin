@@ -13,16 +13,16 @@ import com.intellij.usages.UsageInfo2UsageAdapter
  *
  */
 class SenderFilterKotlin internal constructor(private val eventClass: LeafPsiElement) : Filter {
-    override fun shouldShow(usage: Usage?): Boolean {
+    override fun shouldShow(usage: Usage): Boolean {
         var element = (usage as UsageInfo2UsageAdapter).getElement()
         if (element is PsiReferenceExpression) {
             if ((element.getParent().also { element = it }) is PsiMethodCallExpression) {
                 val callExpression = element as PsiMethodCallExpression
                 val types = callExpression.getArgumentList().getExpressionTypes()
                 for (type in types) {
-                    MLog.debug("shouldShow: 01 : " + PsiUtils.getClass(type).getName())
+                    MLog.debug("shouldShow: 01 : " + PsiUtils.getClass(type)?.getName())
                     MLog.debug("shouldShow: 02 : " + eventClass.getText())
-                    if (PsiUtils.getClass(type).getName() == eventClass.getText()) {
+                    if (PsiUtils.getClass(type)?.getName() == eventClass.getText()) {
                         // pattern : EventBus.getDefault().post(new Event());
                         return true
                     }
@@ -40,9 +40,9 @@ class SenderFilterKotlin internal constructor(private val eventClass: LeafPsiEle
                                         val localVariable = variable
                                         val psiClass = PsiUtils.getClass(localVariable.getTypeElement().getType())
                                         try {
-                                            MLog.debug("shouldShow: 03 : " + psiClass.getName())
+                                            MLog.debug("shouldShow: 03 : " + psiClass?.getName())
                                             MLog.debug("shouldShow: 04 : " + eventClass.getText())
-                                            if (psiClass.getName() == eventClass.getText()) {
+                                            if (psiClass?.getName() == eventClass.getText()) {
                                                 // pattern :
                                                 //   Event event = new Event();
                                                 //   EventBus.getDefault().post(event);

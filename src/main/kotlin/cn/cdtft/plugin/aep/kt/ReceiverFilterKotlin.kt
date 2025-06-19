@@ -11,9 +11,9 @@ import com.intellij.usages.UsageInfo2UsageAdapter
  */
 class ReceiverFilterKotlin : Filter {
     override fun shouldShow(usage: Usage): Boolean {
-        val element = (usage as UsageInfo2UsageAdapter).getElement()
+        val element = (usage as UsageInfo2UsageAdapter).element!!
         MLog.debug("ReceiverFilterKotlin 0 " + PsiUtils.isKotlin(element))
-        MLog.debug("ReceiverFilterKotlin 0 " + element.toString())
+        MLog.debug("ReceiverFilterKotlin 0 $element")
         if (PsiUtils.isEventBusReceiver(element)) {
             MLog.debug("ReceiverFilterKotlin 1 isEventBusReceiver")
             return true

@@ -69,6 +69,7 @@ import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import org.jetbrains.annotations.NonNls
+import org.jetbrains.kotlin.idea.facet.getInstance
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Rectangle
@@ -93,7 +94,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
     constructor() {
         setInjectedContext(true)
-        val usageViewSettings: UsageViewSettings = UsageViewSettings.getInstance()
+        val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
         myUsageViewSettings = UsageViewSettings()
         myUsageViewSettings.loadState(usageViewSettings)
         myUsageViewSettings.isGroupByFileStructure = false
@@ -107,7 +108,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         this.filter = filter
         setInjectedContext(true)
 
-        val usageViewSettings: UsageViewSettings = UsageViewSettings.getInstance()
+        val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
         myUsageViewSettings = UsageViewSettings()
         myUsageViewSettings.loadState(usageViewSettings)
         myUsageViewSettings.isGroupByFileStructure = false
@@ -170,7 +171,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         options: FindUsagesOptions
     ) {
         ApplicationManager.getApplication().assertIsDispatchThread()
-        val usageViewSettings: UsageViewSettings = UsageViewSettings.getInstance()
+        val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
         val savedGlobalSettings = UsageViewSettings()
 
         savedGlobalSettings.loadState(usageViewSettings)
@@ -262,14 +263,10 @@ class ShowUsagesAction : AnAction, PopupAction {
         })
 
         val messageBusConnection = project.getMessageBus().connect(usageView)
-        messageBusConnection.subscribe<Runnable?>(UsageFilteringRuleProvider.RULES_CHANGED!!, object : Runnable {
-            override fun run() {
-                pingEDT.ping()
-            }
-        })
+        messageBusConnection.subscribe<Runnable>(UsageFilteringRuleProvider.RULES_CHANGED!!, Runnable { pingEDT.ping() })
 
 
-        val collect: Processor<Usage?> = object : Processor<Usage?> {
+        val collect: Processor<Usage> = object : Processor<Usage> {
             private val myUsageTarget =
                 arrayOf<UsageTarget?>(PsiElement2UsageTargetAdapter(handler.getPsiElement(), true))
 
@@ -387,12 +384,11 @@ class ShowUsagesAction : AnAction, PopupAction {
         return usage
     }
 
-    private class MyModel(data: MutableList<UsageNode?>, cols: Int) : ListTableModel<UsageNode?>(cols(cols), data, 0),
-        ModelDiff.Model<Any?> {
+    private class MyModel(data: MutableList<UsageNode?>, cols: Int) : ListTableModel<UsageNode?>(cols(cols), data, 0), ModelDiff.Model<Any> {
         override fun addToModel(idx: Int, element: Any) {
-            val node = if (element is UsageNode) element else createStringNode(element)
+            val node = element as? UsageNode ?: createStringNode(element)
 
-            if (idx < getRowCount()) {
+            if (idx < rowCount) {
                 insertRow(idx, node)
             } else {
                 addRow(node)
@@ -412,8 +408,8 @@ class ShowUsagesAction : AnAction, PopupAction {
                         return node
                     }
                 }
-                val list = Collections.nCopies<ColumnInfo<UsageNode?, UsageNode?>?>(cols, o)
-                return list.toTypedArray<ColumnInfo<*, *>?>()
+                val list = Collections.nCopies(cols, o)
+                return list.toTypedArray<ColumnInfo<*, *>>()
             }
         }
     }
@@ -561,13 +557,13 @@ class ShowUsagesAction : AnAction, PopupAction {
                 }
             }
         })
-        val popup: Array<JBPopup> = arrayOfNulls<JBPopup>(1)
+        val popup: Array<JBPopup?> = arrayOfNulls(1)
 
         var shortcut = UsageViewImpl.getShowUsagesWithSettingsShortcut()
         if (shortcut != null) {
             object : DumbAwareAction() {
-                override fun actionPerformed(e: AnActionEvent?) {
-                    popup[0].cancel()
+                override fun actionPerformed(e: AnActionEvent) {
+                    popup.first()?.cancel()
                     showDialogAndFindUsages(handler, popupPosition, editor, maxUsages)
                 }
             }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
@@ -575,8 +571,8 @@ class ShowUsagesAction : AnAction, PopupAction {
         shortcut = showUsagesShortcut
         if (shortcut != null) {
             object : DumbAwareAction() {
-                override fun actionPerformed(e: AnActionEvent?) {
-                    popup[0].cancel()
+                override fun actionPerformed(e: AnActionEvent) {
+                    popup.first()?.cancel()
                     searchEverywhere(options, handler, editor, popupPosition, maxUsages)
                 }
             }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
@@ -584,7 +580,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
         val settingsButton = createSettingsButton(handler, popupPosition, editor, maxUsages, object : Runnable {
             override fun run() {
-                popup[0].cancel()
+                popup.first()?.cancel()
             }
         })
 
@@ -612,9 +608,9 @@ class ShowUsagesAction : AnAction, PopupAction {
                 setShortcutSet(action.getShortcutSet())
             }
 
-            override fun actionPerformed(e: AnActionEvent?) {
+            override fun actionPerformed(e: AnActionEvent) {
                 hideHints()
-                popup[0].cancel()
+                popup.first()?.cancel()
                 val findUsagesManager =
                     (FindManager.getInstance(usageView.getProject()) as FindManagerImpl).getFindUsagesManager()
 
@@ -633,7 +629,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         builder.setSettingButton(toolBar)
 
         popup[0] = builder.createPopup()
-        val content = popup[0].getContent()
+        val content = popup.first()?.getContent()
 
         myWidth = ((toolBar.getPreferredSize().getWidth()
                 + JLabel(
@@ -652,7 +648,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             action.registerCustomShortcutSet(action.getShortcutSet(), content)
         }
 
-        return popup[0]
+        return popup.first()!!
     }
 
     private fun searchEverywhere(
@@ -864,6 +860,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
     }
 
+    @Suppress("removal", "OVERRIDE_DEPRECATION")
     private class MySpeedSearch(table: MyTable) : SpeedSearchBase<JTable?>(table) {
         override fun getSelectedIndex(): Int {
             return this.table!!.getSelectedRow()
@@ -873,7 +870,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             return this.table!!.convertRowIndexToModel(viewIndex)
         }
 
-        override fun getAllElements(): Array<Any> {
+        override fun getAllElements(): Array<Any?> {
             return (this.table!!.getModel() as MyModel).getItems().toTypedArray()
         }
 
@@ -906,7 +903,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         val MORE_USAGES_SEPARATOR: NullUsage = NullUsage.INSTANCE
         private val MORE_USAGES_SEPARATOR_NODE: UsageNode = UsageViewImpl.NULL_NODE
 
-        private val USAGE_NODE_COMPARATOR: Comparator<UsageNode?> = object : Comparator<UsageNode?> {
+        private val USAGE_NODE_COMPARATOR: Comparator<UsageNode> = object : Comparator<UsageNode> {
             override fun compare(c1: UsageNode, c2: UsageNode): Int {
                 if (c1 is StringNode) return 1
                 if (c2 is StringNode) return -1
@@ -923,7 +920,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                 if (i != 0) return i
 
                 if (o1 is Comparable<*> && o2 is Comparable<*>) {
-                    return (o1 as Comparable<*>).compareTo(o2)
+                    return (o1 as Comparable<Any>).compareTo(o2)
                 }
 
                 val loc1 = o1.getLocation()

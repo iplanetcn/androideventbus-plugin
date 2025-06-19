@@ -21,7 +21,7 @@ class SenderFilterJava(private val eventClass: PsiClass) : Filter {
                 val callExpression = element as PsiMethodCallExpression
                 val types = callExpression.getArgumentList().getExpressionTypes()
                 for (type in types) {
-                    if (PsiUtils.getClass(type).getName() == eventClass.getName()) {
+                    if (PsiUtils.getClass(type)?.getName() == eventClass.getName()) {
                         // pattern : EventBus.getDefault().post(new Event());
                         return true
                     }
@@ -39,7 +39,7 @@ class SenderFilterJava(private val eventClass: PsiClass) : Filter {
                                         val localVariable = variable
                                         val psiClass = PsiUtils.getClass(localVariable.getTypeElement().getType())
                                         try {
-                                            if (psiClass.getName() == eventClass.getName()) {
+                                            if (psiClass?.getName() == eventClass.getName()) {
                                                 // pattern :
                                                 //   Event event = new Event();
                                                 //   EventBus.getDefault().post(event);

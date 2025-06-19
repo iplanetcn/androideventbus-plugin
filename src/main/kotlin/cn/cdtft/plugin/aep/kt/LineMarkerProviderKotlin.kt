@@ -111,8 +111,7 @@ class LineMarkerProviderKotlin : LineMarkerProvider {
 //                            KtClass ktClass = new KtClass(postMethod.getNode());
 //                            KotlinFindUsagesHandler dd = new KotlinTypeParameterFindUsagesHandler(ktClass, kotlinFindUsagesHandlerFactory);
 //                            //KotlinFindClassUsagesHandler handlers = new KotlinFindClassUsagesHandler(ktClass, kotlinFindUsagesHandlerFactory);
-                            /**/
-                            * /                            //KotlinFindClassUsagesDialog dialog = (KotlinFindClassUsagesDialog) handlers.getFindUsagesDialog(false, true, false); */
+                            //KotlinFindClassUsagesDialog dialog = (KotlinFindClassUsagesDialog) handlers.getFindUsagesDialog(false, true, false); */
 //                            AbstractFindUsagesDialog dialog = dd.getFindUsagesDialog(false, true, false);
 //                            dialog.show();
 //

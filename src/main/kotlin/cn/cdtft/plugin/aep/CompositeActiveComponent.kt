@@ -21,16 +21,13 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 internal class CompositeActiveComponent(vararg components: ActiveComponent) : ActiveComponent {
-    private val myComponents: Array<ActiveComponent>
-    private val myComponent: JPanel
+    private val myComponents: Array<ActiveComponent> = components.asList().toTypedArray()
+    private val myComponent: JPanel = JPanel(FlowLayout())
 
     init {
-        myComponents = components
-
-        myComponent = JPanel(FlowLayout())
-        myComponent.setOpaque(false)
+        myComponent.isOpaque = false
         for (component in components) {
-            myComponent.add(component.getComponent())
+            myComponent.add(component.component)
         }
     }
 

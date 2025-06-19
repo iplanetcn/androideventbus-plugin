@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/androideventbus-plugin.iml" filepath="$PROJECT_DIR$/.idea/androideventbus-plugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/androideventbus-plugin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/androideventbus-plugin.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/androideventbus-plugin.test.iml" filepath="$PROJECT_DIR$/.idea/modules/androideventbus-plugin.test.iml" />
+    </modules>
+  </component>
+</project>

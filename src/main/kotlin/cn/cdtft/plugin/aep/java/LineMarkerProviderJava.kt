@@ -71,10 +71,8 @@ class LineMarkerProviderJava : LineMarkerProvider {
                         //post
                         val postMethod = eventBusClass.findMethodsByName(Constants.FUN_NAME, false)[0]
                         if (null != postMethod) {
-                            val eventClass = (method.getParameterList().getParameters()[0].getTypeElement()!!
-                                .getType() as PsiClassType).resolve()
-
-                            ShowUsagesAction(SenderFilterJava(eventClass)).startFindUsages(
+                            val eventClass = (method.parameterList.parameters[0].typeElement!!.type as PsiClassType).resolve()
+                            ShowUsagesAction(SenderFilterJava(eventClass!!)).startFindUsages(
                                 postMethod,
                                 RelativePoint(e),
                                 PsiUtilBase.findEditor(psiElement),

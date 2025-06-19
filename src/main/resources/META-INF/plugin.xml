@@ -19,10 +19,10 @@
         <!-- Add your extensions here -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
-                implementationClass="cn.cdtft.plugin.aep.JavaLineMarkerProvider"/>
+                implementationClass="cn.cdtft.plugin.aep.java.LineMarkerProviderJava"/>
         <codeInsight.lineMarkerProvider
-                language="Kotlin"
-                implementationClass="cn.cdtft.plugin.aep.KotlinLineMarkerProvider"/>
+                language="kotlin"
+                implementationClass="cn.cdtft.plugin.aep.kt.LineMarkerProviderKotlin"/>
     </extensions>
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true" />

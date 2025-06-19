@@ -55,7 +55,7 @@ class PingEDT(
                 val finish = System.currentTimeMillis()
                 if (myMaxUnitOfWorkThresholdMs != -1 && finish - start > myMaxUnitOfWorkThresholdMs) break
             }
-            if (!this.isEmpty) {
+            if (!this@PingEDT.isEmpty) {
                 scheduleUpdate()
             }
         }

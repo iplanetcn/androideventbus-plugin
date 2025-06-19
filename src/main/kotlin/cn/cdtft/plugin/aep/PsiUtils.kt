@@ -133,11 +133,11 @@ object PsiUtils {
     }
 
     fun isKotlin(psiElement: PsiElement): Boolean {
-        return psiElement.getLanguage().`is`(Language.findLanguageByID("kotlin"))
+        return psiElement.language.`is`(Language.findLanguageByID("kotlin"))
     }
 
     fun isJava(psiElement: PsiElement): Boolean {
-        return psiElement.getLanguage().`is`(Language.findLanguageByID("JAVA"))
+        return psiElement.language.`is`(Language.findLanguageByID("JAVA"))
     }
 
     /**
