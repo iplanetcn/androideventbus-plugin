@@ -168,6 +168,6 @@ intellijPlatformTesting {
 
 tasks.named<RunIdeTask>("runIde") {
     jvmArgumentProviders += CommandLineArgumentProvider {
-        listOf("-Didea.kotlin.plugin.use.k2=true")
+        listOf("-Didea.kotlin.plugin.use.k2=true", "-Xbootclasspath/a:/Applications/Android Studio.app/Contents/lib/nio-fs.jar")
     }
 }

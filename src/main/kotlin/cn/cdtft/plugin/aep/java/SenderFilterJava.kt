@@ -15,39 +15,9 @@ class SenderFilterJava(private val mTagPsiElement: PsiElement) : Filter {
                 val expressions = callExpression.argumentList.expressions
                 for (expression in expressions) {
                     if (expression.lastChild.text.equals(mTagPsiElement.lastChild.text)) {
-                        // pattern:
-                        // EventBus.getDefault().post(event, "tag");
                         return true
                     }
                 }
-//                if ((element.parent.also { element = it }) is PsiExpressionStatement) {
-//                    if ((element!!.parent.also { element = it }) is PsiCodeBlock) {
-//                        val codeBlock = element as PsiCodeBlock
-//                        val statements = codeBlock.statements
-//                        for (statement in statements) {
-//                            if (statement is PsiDeclarationStatement) {
-//                                val declarationStatement = statement
-//                                val elements = declarationStatement.declaredElements
-//                                for (variable in elements) {
-//                                    if (variable is PsiLocalVariable) {
-//                                        val localVariable = variable
-//                                        val psiClass = PsiUtils.getClass(localVariable.typeElement.type)
-//                                        try {
-//                                            if (psiClass?.name == eventClass.name) {
-//                                                // pattern :
-//                                                //   Event event = new Event();
-//                                                //   EventBus.getDefault().post(event);
-//                                                return true
-//                                            }
-//                                        } catch (e: NullPointerException) {
-//                                            println(e.toString())
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
             }
         }
 

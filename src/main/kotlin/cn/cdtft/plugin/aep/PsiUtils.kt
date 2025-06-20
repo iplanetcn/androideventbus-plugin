@@ -10,13 +10,10 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.java.PsiIdentifierImpl
 import com.intellij.psi.impl.source.tree.java.PsiMethodCallExpressionImpl
 import com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl
-import org.jetbrains.kotlin.idea.util.findAnnotation
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import kotlin.math.exp
 
 object PsiUtils {
     fun getClass(psiType: PsiType?): PsiClass? {
@@ -43,12 +40,11 @@ object PsiUtils {
                 val function = psiElement
                 val modifierList = function.modifierList
                 if (modifierList != null) {
-                    for (annotationEntry in modifierList.annotationEntries) {
+                    for (annotationEntry in function.annotationEntries) {
                         val calleeExpression = annotationEntry.calleeExpression
                         if (calleeExpression != null && safeEquals(calleeExpression.text, Constants.FUN_ANNOTATION_KT)) {
                             for (argument in annotationEntry.valueArguments) {
-                                val expression = argument.getArgumentExpression()
-                                if (expression is KtNameReferenceExpression && safeEquals(expression.getReferencedName(), Constants.FUN_ANNOTATION_TAG)) {
+                                if (safeEquals(argument.getArgumentName()?.asName?.asString(), Constants.FUN_ANNOTATION_TAG)) {
                                     return true
                                 }
                             }

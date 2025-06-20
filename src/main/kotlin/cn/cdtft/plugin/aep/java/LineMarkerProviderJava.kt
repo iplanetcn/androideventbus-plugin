@@ -2,8 +2,8 @@ package cn.cdtft.plugin.aep.java
 
 import cn.cdtft.plugin.aep.PsiUtils
 import cn.cdtft.plugin.aep.ShowUsagesAction
-import cn.cdtft.plugin.aep.utils.Constants
 import cn.cdtft.plugin.aep.ext.isJava
+import cn.cdtft.plugin.aep.utils.Constants
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
@@ -18,7 +18,6 @@ import java.awt.event.MouseEvent
 class LineMarkerProviderJava : LineMarkerProvider {
     override fun getLineMarkerInfo(psiElement: PsiElement): LineMarkerInfo<*>? {
         if (!psiElement.isJava()) return null
-        //if (!(psiElement instanceof PsiIdentifier && psiElement.getParent() instanceof PsiMethod)) return null;
         if (PsiUtils.isEventBusPost(psiElement)) {
             return LineMarkerInfo<PsiElement?>(
                 psiElement,
@@ -93,15 +92,19 @@ private val SHOW_RECEIVERS: GutterIconNavigationHandler<PsiElement?> =
             val expression = psiElement
             try {
                 val expressionTypes = expression.argumentList.expressionTypes
+                val expressions = expression.argumentList.expressions
                 if (expressionTypes.size > 0) {
                     val eventClass = PsiUtils.getClass(expressionTypes[0])
-                    if (eventClass != null) {
-                        ShowUsagesAction(ReceiverFilterJava(expression)).startFindUsages(
-                            eventClass,
-                            RelativePoint(e),
-                            PsiEditorUtil.findEditor(psiElement),
-                            Constants.MAX_USAGES
-                        )
+                    if (expressions.size == 2) {
+                        val tagExpression = expressions[1]
+                        if (eventClass != null && tagExpression != null) {
+                            ShowUsagesAction(ReceiverFilterJava(tagExpression)).startFindUsages(
+                                eventClass,
+                                RelativePoint(e),
+                                PsiEditorUtil.findEditor(psiElement),
+                                Constants.MAX_USAGES
+                            )
+                        }
                     }
                 }
             } catch (ee: Exception) {

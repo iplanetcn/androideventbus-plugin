@@ -573,7 +573,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             )
         ).preferredSize.width + settingsButton.preferredSize.width))
         myWidth = -1
-        for (action in toolbar.getChildren(null as AnActionEvent?)) {
+        for (action in toolbar.getChildren(null)) {
             action.unregisterCustomShortcutSet(usageView.component)
             action.registerCustomShortcutSet(action.shortcutSet, content)
         }

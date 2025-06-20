@@ -69,67 +69,23 @@ private val SHOW_SENDERS: GutterIconNavigationHandler<PsiElement> =
                 MLog.debug("kt SHOW_SENDERS 1: " + eventBusClass.text.substring(0, 25))
                 MLog.debug("kt SHOW_SENDERS 2: " + postMethod.text.substring(0, 20))
             }
-            //JavaCodeContextType.Declaration dd;
-            //org.jetbrains.kotlin.psi.KtUserType ktUserType;
-            //org.jetbrains.kotlin.psi.KtNameReferenceExpression ktNameReferenceExpression;
-            //com.intellij.psi.impl.source.tree.LeafPsiElement leafPsiElement;
             var eventClass: LeafPsiElement? = null
             var parameter: KtParameter? = null
             var typeReference: KtTypeReference? = null
             var ktUserType: KtUserType? = null
             var ktNameReferenceExpression: KtNameReferenceExpression? = null
-            val userTypeStub: KotlinUserTypeStubImpl? = null
             val function = psiElement
             val parameterList = function.valueParameterList
             if (parameterList != null && parameterList.parameters.size == 1) {
                 parameter = parameterList.parameters[0]
                 typeReference = parameter.typeReference
                 ktUserType = typeReference!!.firstChild as KtUserType?
-                //userTypeStub = new KotlinUserTypeStubImpl(ktUserType.getStub());
                 ktNameReferenceExpression = ktUserType!!.firstChild as KtNameReferenceExpression?
                 eventClass = ktNameReferenceExpression!!.firstChild as LeafPsiElement?
                 MLog.debug("kt SHOW_SENDERS 3: $eventClass")
             }
 
             if (postMethod != null && eventClass != null) {
-                val project2 = postMethod.project
-                val findUsagesManager =
-                    (FindManager.getInstance(project) as FindManagerImpl).findUsagesManager
-
-
-                //new KotlinFindUsagesHandlerFactory(project).getFindClassOptions();
-                //KotlinFindUsagesHandlerFactory kotlinFindUsagesHandlerFactory = new KotlinFindUsagesHandlerFactory(project);
-
-                //                            FindUsagesHandler findUsagesHandler = kotlinFindUsagesHandlerFactory.createFindUsagesHandler(parameter, false);
-                //                            AbstractFindUsagesDialog dialog2 = findUsagesHandler.getFindUsagesDialog(false, true, true);
-                //                            dialog2.showAndGet();
-                //dialog2.show();
-                //
-                //                            KtClass ktClass = new KtClass(postMethod.getNode());
-                //                            KotlinFindUsagesHandler dd = new KotlinTypeParameterFindUsagesHandler(ktClass, kotlinFindUsagesHandlerFactory);
-                //                            //KotlinFindClassUsagesHandler handlers = new KotlinFindClassUsagesHandler(ktClass, kotlinFindUsagesHandlerFactory);
-                //KotlinFindClassUsagesDialog dialog = (KotlinFindClassUsagesDialog) handlers.getFindUsagesDialog(false, true, false); */
-                //                            AbstractFindUsagesDialog dialog = dd.getFindUsagesDialog(false, true, false);
-                //                            dialog.show();
-                //
-                //                            Collection psiReferences = dd.findReferencesToHighlight(parameter, GlobalSearchScope.allScope(project));
-                //                            for (Object p:psiReferences){
-                //                                PsiReference p1= (PsiReference) p;
-                //                                MLog.debug(p1.toString());
-                //                            }
-
-                //
-                //                            StubBasedPsiElementBase d;
-
-
-                //KotlinFindUsagesProvider findUsagesProvider = new KotlinFindUsagesProvider();
-
-                //findUsagesProvider.getWordsScanner();
-
-                //DefaultWordsScanner defaultWordsScanner;
-                //FileEditor editor = PsiUtilBase.findEditor(psiElement);
-                //KotlinEditorOptions options;
-                //findUsagesManager.findUsages(eventClass, null, );
                 ShowUsagesAction(SenderFilterKotlin(eventClass))
                     .startFindUsages(
                         postMethod,
@@ -144,8 +100,6 @@ private val SHOW_SENDERS: GutterIconNavigationHandler<PsiElement> =
 private val SHOW_RECEIVERS: GutterIconNavigationHandler<PsiElement> =
     GutterIconNavigationHandler<PsiElement> { e, psiElement ->
         MLog.debug("kt SHOW_RECEIVERS 0: " + psiElement.text)
-
-
         if (psiElement is KtDotQualifiedExpression) {
             MLog.debug("kt SHOW_RECEIVERS 1: " + psiElement.text)
 
@@ -172,18 +126,5 @@ private val SHOW_RECEIVERS: GutterIconNavigationHandler<PsiElement> =
             } catch (throwable: Error) {
                 throwable.fillInStackTrace()
             }
-
-
-            //                        PsiType[] expressionTypes = expression.getArgumentList().getExpressionTypes();
-            //                        if (expressionTypes.length > 0) {
-            //                            PsiClass eventClass = PsiUtils.getClass(expressionTypes[0]);
-            //                            if (eventClass != null) {
-            //                                new ShowUsagesAction(new ReceiverFilterKotlin())
-            //                                        .startFindUsages(
-            //                                                eventClass, new RelativePoint(e),
-            //                                                PsiUtilBase.findEditor(psiElement),
-            //                                                Constants.MAX_USAGES);
-            //                            }
-            //                        }
         }
     }

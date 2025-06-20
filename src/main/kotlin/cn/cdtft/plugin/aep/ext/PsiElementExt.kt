@@ -4,9 +4,9 @@ import com.intellij.lang.Language
 import com.intellij.psi.PsiElement
 
 fun PsiElement.isJava(): Boolean {
-    return language.`is`(Language.findLanguageByID("kotlin"))
+    return language.`is`(Language.findLanguageByID("JAVA"))
 }
 
 fun PsiElement.isKotlin(): Boolean {
-    return language.`is`(Language.findLanguageByID("JAVA"))
+    return language.`is`(Language.findLanguageByID("kotlin"))
 }
