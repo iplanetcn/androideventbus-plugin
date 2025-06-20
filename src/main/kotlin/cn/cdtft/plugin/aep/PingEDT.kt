@@ -26,7 +26,6 @@ import kotlin.concurrent.Volatile
  */
 class PingEDT(
     private val myName: @NonNls String, private val myShutUpCondition: Condition<*>,
-//-1 means indefinite
     private val myMaxUnitOfWorkThresholdMs: Int, private val pingAction: Runnable
 ) {
     @Volatile

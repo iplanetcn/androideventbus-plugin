@@ -60,10 +60,9 @@ class LineMarkerProviderJava : LineMarkerProvider {
             object : GutterIconNavigationHandler<PsiElement?> {
                 override fun navigate(e: MouseEvent, psiElement: PsiElement?) {
                     if (psiElement is PsiMethod) {
-                        val project = psiElement.getProject()
+                        val project = psiElement.project
                         val javaPsiFacade = JavaPsiFacade.getInstance(project)
-                        val eventBusClass =
-                            javaPsiFacade.findClass(Constants.FUN_EVENT_CLASS, GlobalSearchScope.allScope(project))
+                        val eventBusClass = javaPsiFacade.findClass(Constants.FUN_EVENT_CLASS, GlobalSearchScope.allScope(project))
                         if (eventBusClass == null) return
 
                         val method = psiElement
@@ -95,26 +94,24 @@ class LineMarkerProviderJava : LineMarkerProvider {
          * use post to find all matched Subscribe
          */
         private val SHOW_RECEIVERS: GutterIconNavigationHandler<PsiElement?> =
-            object : GutterIconNavigationHandler<PsiElement?> {
-                override fun navigate(e: MouseEvent, psiElement: PsiElement?) {
-                    if (psiElement is PsiMethodCallExpression) {
-                        val expression = psiElement
-                        try {
-                            val expressionTypes = expression.getArgumentList().getExpressionTypes()
-                            if (expressionTypes.size > 0) {
-                                val eventClass = PsiUtils.getClass(expressionTypes[0])
-                                if (eventClass != null) {
-                                    ShowUsagesAction(ReceiverFilterJava()).startFindUsages(
-                                        eventClass,
-                                        RelativePoint(e),
-                                        PsiUtilBase.findEditor(psiElement),
-                                        Constants.MAX_USAGES
-                                    )
-                                }
+            GutterIconNavigationHandler<PsiElement?> { e, psiElement ->
+                if (psiElement is PsiMethodCallExpression) {
+                    val expression = psiElement
+                    try {
+                        val expressionTypes = expression.argumentList.expressionTypes
+                        if (expressionTypes.size > 0) {
+                            val eventClass = PsiUtils.getClass(expressionTypes[0])
+                            if (eventClass != null) {
+                                ShowUsagesAction(ReceiverFilterJava()).startFindUsages(
+                                    eventClass,
+                                    RelativePoint(e),
+                                    PsiUtilBase.findEditor(psiElement),
+                                    Constants.MAX_USAGES
+                                )
                             }
-                        } catch (ee: Exception) {
-                            ee.fillInStackTrace()
                         }
+                    } catch (ee: Exception) {
+                        ee.fillInStackTrace()
                     }
                 }
             }
