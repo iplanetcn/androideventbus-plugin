@@ -4,6 +4,7 @@ import cn.cdtft.plugin.aep.utils.Constants
 import cn.cdtft.plugin.aep.utils.MLog
 import cn.cdtft.plugin.aep.ext.isJava
 import cn.cdtft.plugin.aep.ext.isKotlin
+import cn.cdtft.plugin.aep.utils.safeEquals
 import com.intellij.ide.plugins.PluginManager
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.psi.*
@@ -123,10 +124,6 @@ object PsiUtils {
         return false
     }
 
-    private fun safeEquals(obj: String?, value: String?): Boolean {
-        return obj != null && obj == value
-    }
-    
     /**
      * is kotlin plug installed and enable
      *

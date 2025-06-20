@@ -2,6 +2,7 @@ package cn.cdtft.plugin.aep.java
 
 import cn.cdtft.plugin.aep.Filter
 import cn.cdtft.plugin.aep.utils.Constants
+import cn.cdtft.plugin.aep.utils.safeEquals
 import com.intellij.psi.*
 import com.intellij.usages.Usage
 import com.intellij.usages.UsageInfo2UsageAdapter
@@ -30,9 +31,4 @@ class ReceiverFilterJava(private val mTagPsiExpression: PsiExpression) : Filter 
         }
         return false
     }
-}
-
-
-private fun safeEquals(obj: String?, value: String?): Boolean {
-    return obj != null && obj == value
 }
