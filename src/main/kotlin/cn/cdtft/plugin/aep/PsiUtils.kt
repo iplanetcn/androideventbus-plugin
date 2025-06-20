@@ -2,21 +2,22 @@ package cn.cdtft.plugin.aep
 
 import cn.cdtft.plugin.aep.utils.Constants
 import cn.cdtft.plugin.aep.utils.MLog
+import cn.cdtft.plugin.aep.ext.isJava
+import cn.cdtft.plugin.aep.ext.isKotlin
 import com.intellij.ide.plugins.PluginManager
-import com.intellij.lang.Language
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.tree.java.PsiIdentifierImpl
 import com.intellij.psi.impl.source.tree.java.PsiMethodCallExpressionImpl
 import com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl
+import org.jetbrains.kotlin.idea.util.findAnnotation
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import kotlin.math.exp
 
-/**
- * modify by likfe ( https://github.com/likfe/ ) on 2018/03/05.
- */
 object PsiUtils {
     fun getClass(psiType: PsiType?): PsiClass? {
         if (psiType is PsiClassType) {
@@ -26,29 +27,31 @@ object PsiUtils {
     }
 
     fun isEventBusReceiver(psiElement: PsiElement): Boolean {
-        if (psiElement.language.`is`(Language.findLanguageByID("JAVA"))) {
+        if (psiElement.isJava()) {
             if (psiElement is PsiMethod) {
                 val method = psiElement
                 val modifierList = method.modifierList
                 for (psiAnnotation in modifierList.annotations) {
                     if (safeEquals(psiAnnotation.qualifiedName, Constants.FUN_ANNOTATION)) {
-                        return true
+                        val tag: PsiAnnotationMemberValue? = psiAnnotation.findAttributeValue(Constants.FUN_ANNOTATION_TAG)
+                        return tag != null
                     }
                 }
             }
-        } else if (psiElement.language.`is`(Language.findLanguageByID("kotlin"))) {
+        } else if (psiElement.isKotlin()) {
             if (psiElement is KtNamedFunction) {
                 val function = psiElement
                 val modifierList = function.modifierList
                 if (modifierList != null) {
                     for (annotationEntry in modifierList.annotationEntries) {
                         val calleeExpression = annotationEntry.calleeExpression
-                        if (calleeExpression != null && safeEquals(
-                                calleeExpression.text,
-                                Constants.FUN_ANNOTATION_KT
-                            )
-                        ) {
-                            return true
+                        if (calleeExpression != null && safeEquals(calleeExpression.text, Constants.FUN_ANNOTATION_KT)) {
+                            for (argument in annotationEntry.valueArguments) {
+                                val expression = argument.getArgumentExpression()
+                                if (expression is KtNameReferenceExpression && safeEquals(expression.getReferencedName(), Constants.FUN_ANNOTATION_TAG)) {
+                                    return true
+                                }
+                            }
                         }
                     }
                 }
@@ -58,17 +61,13 @@ object PsiUtils {
     }
 
     fun isEventBusPost(psiElement: PsiElement): Boolean {
-        if (psiElement.language.`is`(Language.findLanguageByID("JAVA"))) {
+        if (psiElement.isJava()) {
             if (psiElement is PsiMethodCallExpressionImpl && psiElement.firstChild != null && psiElement.firstChild is PsiReferenceExpressionImpl) {
                 val all = psiElement.firstChild as PsiReferenceExpressionImpl
                 if (all.firstChild is PsiMethodCallExpressionImpl && all.lastChild is PsiIdentifierImpl) {
                     val start = all.firstChild as PsiMethodCallExpressionImpl
                     val post = all.lastChild as PsiIdentifierImpl
-                    if ((safeEquals(post.text, Constants.FUN_NAME) || safeEquals(
-                            post.text,
-                            Constants.FUN_NAME2
-                        )) && safeEquals(start.text, Constants.FUN_START)
-                    ) {
+                    if ((safeEquals(post.text, Constants.FUN_NAME) || safeEquals(post.text,Constants.FUN_NAME2)) && safeEquals(start.text, Constants.FUN_START)) {
                         return true
                     }
                 }
@@ -81,17 +80,17 @@ object PsiUtils {
                 if (method != null) {
                     val name = method.name
                     val parent = method.parent
-                    if ((safeEquals(Constants.FUN_NAME, name) || safeEquals(
-                            Constants.FUN_NAME2,
-                            name
-                        )) && parent is PsiClass
-                    ) {
-                        val implClass = parent
-                        return isEventBusClass(implClass) || isSuperClassEventBus(implClass)
+                    if ((safeEquals(Constants.FUN_NAME, name) || safeEquals(Constants.FUN_NAME2, name)) && parent is PsiClass) {
+                        for (parameter in method.parameterList.parameters) {
+                            if(parameter.name == Constants.FUN_ANNOTATION_TAG) {
+                                val implClass = parent
+                                return isEventBusClass(implClass) || isSuperClassEventBus(implClass)
+                            }
+                        }
                     }
                 }
             }
-        } else if (psiElement.language.`is`(Language.findLanguageByID("kotlin"))) {
+        } else if (psiElement.isKotlin()) {
             if (psiElement is KtDotQualifiedExpression) {
                 val all = psiElement
                 if (all.firstChild is KtDotQualifiedExpression && all.lastChild is KtCallExpression) {
@@ -131,15 +130,7 @@ object PsiUtils {
     private fun safeEquals(obj: String?, value: String?): Boolean {
         return obj != null && obj == value
     }
-
-    fun isKotlin(psiElement: PsiElement): Boolean {
-        return psiElement.language.`is`(Language.findLanguageByID("kotlin"))
-    }
-
-    fun isJava(psiElement: PsiElement): Boolean {
-        return psiElement.language.`is`(Language.findLanguageByID("JAVA"))
-    }
-
+    
     /**
      * is kotlin plug installed and enable
      *
@@ -148,12 +139,13 @@ object PsiUtils {
     fun checkIsKotlinInstalled(): Boolean {
         val pluginId = PluginId.findId("org.jetbrains.kotlin")
         if (pluginId != null) {
-            val pluginDescriptor = PluginManager.getPlugin(pluginId)
+            val pluginDescriptor = PluginManager.getInstance().findEnabledPlugin(pluginId)
             return pluginDescriptor != null && pluginDescriptor.isEnabled
         }
         return false
     }
 
+    @Suppress("unused")
     private fun logPluginList() {
         val pluginDescriptors = PluginManager.getPlugins()
         MLog.debug("== list plug ==")

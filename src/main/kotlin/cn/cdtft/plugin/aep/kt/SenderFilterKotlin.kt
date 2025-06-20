@@ -8,41 +8,37 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.usages.Usage
 import com.intellij.usages.UsageInfo2UsageAdapter
 
-/**
- * Created by likfe ( https://github.com/likfe/ ) in 2018/03/06
- *
- */
 class SenderFilterKotlin internal constructor(private val eventClass: LeafPsiElement) : Filter {
     override fun shouldShow(usage: Usage): Boolean {
-        var element = (usage as UsageInfo2UsageAdapter).getElement()
+        var element = (usage as UsageInfo2UsageAdapter).element
         if (element is PsiReferenceExpression) {
-            if ((element.getParent().also { element = it }) is PsiMethodCallExpression) {
+            if ((element.parent.also { element = it }) is PsiMethodCallExpression) {
                 val callExpression = element as PsiMethodCallExpression
-                val types = callExpression.getArgumentList().getExpressionTypes()
+                val types = callExpression.argumentList.expressionTypes
                 for (type in types) {
-                    MLog.debug("shouldShow: 01 : " + PsiUtils.getClass(type)?.getName())
-                    MLog.debug("shouldShow: 02 : " + eventClass.getText())
-                    if (PsiUtils.getClass(type)?.getName() == eventClass.getText()) {
+                    MLog.debug("shouldShow: 01 : " + PsiUtils.getClass(type)?.name)
+                    MLog.debug("shouldShow: 02 : " + eventClass.text)
+                    if (PsiUtils.getClass(type)?.name == eventClass.text) {
                         // pattern : EventBus.getDefault().post(new Event());
                         return true
                     }
                 }
-                if ((element.getParent().also { element = it }) is PsiExpressionStatement) {
-                    if ((element!!.getParent().also { element = it }) is PsiCodeBlock) {
+                if ((element.parent.also { element = it }) is PsiExpressionStatement) {
+                    if ((element!!.parent.also { element = it }) is PsiCodeBlock) {
                         val codeBlock = element as PsiCodeBlock
-                        val statements = codeBlock.getStatements()
+                        val statements = codeBlock.statements
                         for (statement in statements) {
                             if (statement is PsiDeclarationStatement) {
                                 val declarationStatement = statement
-                                val elements = declarationStatement.getDeclaredElements()
+                                val elements = declarationStatement.declaredElements
                                 for (variable in elements) {
                                     if (variable is PsiLocalVariable) {
                                         val localVariable = variable
-                                        val psiClass = PsiUtils.getClass(localVariable.getTypeElement().getType())
+                                        val psiClass = PsiUtils.getClass(localVariable.typeElement.type)
                                         try {
-                                            MLog.debug("shouldShow: 03 : " + psiClass?.getName())
-                                            MLog.debug("shouldShow: 04 : " + eventClass.getText())
-                                            if (psiClass?.getName() == eventClass.getText()) {
+                                            MLog.debug("shouldShow: 03 : " + psiClass?.name)
+                                            MLog.debug("shouldShow: 04 : " + eventClass.text)
+                                            if (psiClass?.name == eventClass.text) {
                                                 // pattern :
                                                 //   Event event = new Event();
                                                 //   EventBus.getDefault().post(event);

@@ -5,9 +5,7 @@ import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.Logger
 
-/**
- * Created by likfe on 2018/3/1.
- */
+@Suppress("UnstableApiUsage")
 object MLog {
     private const val TAG = "eb3"
     const val DEBUG: Boolean = true

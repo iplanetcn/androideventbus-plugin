@@ -4,9 +4,6 @@ import cn.cdtft.plugin.aep.ShowUsagesAction
 import com.intellij.openapi.util.IconLoader
 import javax.swing.Icon
 
-/**
- * Created by likfe on 2018/3/6.
- */
 object Constants {
     const val IS_DEBUG: Boolean = true
 
@@ -20,4 +17,5 @@ object Constants {
     const val FUN_ANNOTATION_KT: String = "Subscribe"
     const val FUN_EVENT_CLASS: String = "org.simple.eventbus.EventBus"
     const val FUN_EVENT_CLASS_NAME: String = "EventBus"
+    const val FUN_ANNOTATION_TAG: String = "tag"
 }

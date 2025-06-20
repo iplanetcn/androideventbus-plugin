@@ -1,18 +1,3 @@
-/*
- * Copyright 2000-2012 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package cn.cdtft.plugin.aep
 
 import com.intellij.CommonBundle
@@ -32,7 +17,6 @@ import com.intellij.find.findUsages.PsiElement2UsageTargetAdapter
 import com.intellij.find.impl.FindManagerImpl
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.gotoByName.ModelDiff
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
@@ -72,41 +56,23 @@ import org.jetbrains.annotations.NonNls
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Rectangle
-import java.awt.event.ActionEvent
-import java.awt.event.ActionListener
 import java.util.*
 import javax.swing.*
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * modify by likfe ( https://github.com/likfe/ ) in 2016/09/05
- *
- *
- * add ShowUsagesAction(), if Registering actions in the plugin.xml file,ShowUsagesAction must have ShowUsagesAction()
- */
 class ShowUsagesAction : AnAction, PopupAction {
     private var filter: Filter? = null
 
     private val myUsageViewSettings: UsageViewSettings
     private var mySearchEverywhereRunnable: Runnable? = null
 
-    constructor() {
-        setInjectedContext(true)
-        val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
-        myUsageViewSettings = UsageViewSettings()
-        myUsageViewSettings.loadState(usageViewSettings)
-        myUsageViewSettings.isGroupByFileStructure = false
-        myUsageViewSettings.isGroupByModule = false
-        myUsageViewSettings.isGroupByPackage = false
-        myUsageViewSettings.isGroupByUsageType = false
-        myUsageViewSettings.isGroupByScope = false
-    }
-
     constructor(filter: Filter) {
         this.filter = filter
+    }
+    
+    init {
         setInjectedContext(true)
-
         val usageViewSettings: UsageViewSettings = UsageViewSettings.instance
         myUsageViewSettings = UsageViewSettings()
         myUsageViewSettings.loadState(usageViewSettings)
@@ -123,7 +89,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
 
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.getData<Project?>(PlatformDataKeys.PROJECT)
+        val project = e.getData(PlatformDataKeys.PROJECT)
         if (project == null) return
 
         val searchEverywhere = mySearchEverywhereRunnable
@@ -135,12 +101,12 @@ class ShowUsagesAction : AnAction, PopupAction {
             return
         }
 
-        val popupPosition = JBPopupFactory.getInstance().guessBestPopupLocation(e.getDataContext())
+        val popupPosition = JBPopupFactory.getInstance().guessBestPopupLocation(e.dataContext)
         PsiDocumentManager.getInstance(project).commitAllDocuments()
         FeatureUsageTracker.getInstance().triggerFeatureUsed("navigation.goto.usages")
 
-        val usageTargets = e.getData<Array<UsageTarget?>?>(UsageView.USAGE_TARGETS_KEY)
-        val editor = e.getData<Editor?>(PlatformDataKeys.EDITOR)
+        val usageTargets = e.getData(UsageView.USAGE_TARGETS_KEY)
+        val editor = e.getData(PlatformDataKeys.EDITOR)
         if (usageTargets == null) {
             chooseAmbiguousTargetAndPerform(project, editor) { element ->
                 startFindUsages(element, popupPosition, editor, USAGES_PAGE_SIZE)
@@ -190,8 +156,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
         val usages: MutableList<Usage> = ArrayList<Usage>()
         val visibleNodes: MutableSet<UsageNode?> = LinkedHashSet<UsageNode?>()
-        val descriptor =
-            TargetElementsDescriptor(handler.primaryElements, handler.secondaryElements)
+        val descriptor = TargetElementsDescriptor(handler.primaryElements, handler.secondaryElements)
 
         val table = MyTable()
         val processIcon = AsyncProcessIcon("xxx")
@@ -201,7 +166,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             visibleNodes.add(MORE_USAGES_SEPARATOR_NODE)
         }
 
-        addUsageNodes(usageView.getRoot(), usageView, ArrayList<UsageNode?>())
+        addUsageNodes(usageView.root, usageView, ArrayList<UsageNode?>())
 
         ScrollingUtil.installActions(table)
 
@@ -209,7 +174,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         setTableModel(table, usageView, data)
 
         val speedSearch: SpeedSearchBase<JTable?> = MySpeedSearch(table)
-        speedSearch.setComparator(SpeedSearchComparator(false))
+        speedSearch.comparator = SpeedSearchComparator(false)
 
         val popup = createUsagePopup(
             usages, descriptor, visibleNodes, handler, editor, popupPosition,
@@ -218,30 +183,22 @@ class ShowUsagesAction : AnAction, PopupAction {
 
         Disposer.register(popup, usageView)
 
-        // show popup only if find usages takes more than 300ms, otherwise it would flicker needlessly
+        // show popup only if you find usages takes more than 300ms, otherwise it would flicker needlessly
         val alarm = Alarm(usageView)
-        alarm.addRequest(object : Runnable {
-            override fun run() {
-                showPopupIfNeedTo(popup, popupPosition)
-            }
-        }, 300)
+        alarm.addRequest({ showPopupIfNeedTo(popup, popupPosition) }, 300)
 
-        val pingEDT = PingEDT("Rebuild popup in EDT", object : Condition<Any?> {
-            override fun value(o: Any?): Boolean {
-                return popup.isDisposed()
-            }
-        }, 100, object : Runnable {
+        val pingEDT = PingEDT("Rebuild popup in EDT", Condition<Any?> { popup.isDisposed }, 100, object : Runnable {
             override fun run() {
-                if (popup.isDisposed()) return
+                if (popup.isDisposed) return
 
                 val nodes: MutableList<UsageNode?> = ArrayList<UsageNode?>()
                 val copy: MutableList<Usage>?
                 synchronized(usages) {
                     // open up popup as soon as several usages 've been found
-                    if (!popup.isVisible() && (usages.size <= 1 || !showPopupIfNeedTo(popup, popupPosition))) {
+                    if (!popup.isVisible && (usages.size <= 1 || !showPopupIfNeedTo(popup, popupPosition))) {
                         return
                     }
-                    addUsageNodes(usageView.getRoot(), usageView, nodes)
+                    addUsageNodes(usageView.root, usageView, nodes)
                     copy = ArrayList<Usage>(usages)
                 }
 
@@ -253,7 +210,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                     popup,
                     presentation,
                     popupPosition,
-                    !processIcon.isDisposed()
+                    !processIcon.isDisposed
                 )
             }
         })
@@ -263,8 +220,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
 
         val collect: Processor<Usage> = object : Processor<Usage> {
-            private val myUsageTarget =
-                arrayOf<UsageTarget?>(PsiElement2UsageTargetAdapter(handler.psiElement, true))
+            private val myUsageTarget = arrayOf<UsageTarget?>(PsiElement2UsageTargetAdapter(handler.psiElement, true))
 
             override fun process(usage: Usage): Boolean {
                 synchronized(usages) {
@@ -305,7 +261,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         ) {
             ApplicationManager.getApplication().invokeLater({
                 Disposer.dispose(processIcon)
-                val parent = processIcon.getParent()
+                val parent = processIcon.parent
                 parent.remove(processIcon)
                 parent.repaint()
                 pingEDT.ping() // repaint title
@@ -324,7 +280,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                     } else if (visibleNodes.size == 1) {
                         if (usages.size == 1) {
                             //the only usage
-                            val usage = visibleNodes.iterator().next()!!.getUsage()
+                            val usage = visibleNodes.iterator().next()!!.usage
                             usage.navigate(true)
                             //String message = UsageViewBundle.message("show.usages.only.usage", searchScopePresentableName(options, project));
                             //navigateAndHint(usage, message, handler, popupPosition, maxUsages, options);
@@ -332,7 +288,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                         } else {
                             assert(usages.size > 1) { usages }
                             // usage view can filter usages down to one
-                            val visibleUsage = visibleNodes.iterator().next()!!.getUsage()
+                            val visibleUsage = visibleNodes.iterator().next()!!.usage
                             if (areAllUsagesInOneLine(visibleUsage, usages)) {
                                 val hint = UsageViewBundle.message(
                                     "all.usages.are.in.this.line",
@@ -351,7 +307,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                             }
                         }
                     } else {
-                        val title = presentation.getTabText()
+                        val title = presentation.tabText
                         val shouldShowMoreSeparator = visibleNodes.contains(MORE_USAGES_SEPARATOR_NODE)
                         val fullTitle: String = getFullTitle(
                             usages,
@@ -363,13 +319,9 @@ class ShowUsagesAction : AnAction, PopupAction {
                         (popup as AbstractPopup).setCaption(fullTitle)
                     }
                 }
-            }, project.getDisposed())
+            }, project.disposed)
         }
-        Disposer.register(popup, object : Disposable {
-            override fun dispose() {
-                indicator.cancel()
-            }
-        })
+        Disposer.register(popup) { indicator.cancel() }
     }
 
     protected fun transform(usage: Usage): Usage? {
@@ -415,10 +367,9 @@ class ShowUsagesAction : AnAction, PopupAction {
         options: FindUsagesOptions
     ) {
         val label = createHintComponent(text, handler, popupPosition, editor, HIDE_HINTS_ACTION, maxUsages, options)
-        if (editor == null || editor.isDisposed()) {
+        if (editor == null || editor.isDisposed) {
             HintManager.getInstance().showHint(
-                label, popupPosition, HintManager.HIDE_BY_ANY_KEY or
-                        HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_SCROLLING, 0
+                label, popupPosition, HintManager.HIDE_BY_ANY_KEY or HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_SCROLLING, 0
             )
         } else {
             HintManager.getInstance().showInformationHint(editor, label)
@@ -440,11 +391,7 @@ class ShowUsagesAction : AnAction, PopupAction {
 
         val panel: JPanel = object : JPanel(BorderLayout()) {
             override fun addNotify() {
-                mySearchEverywhereRunnable = object : Runnable {
-                    override fun run() {
-                        searchEverywhere(options, handler, editor, popupPosition, maxUsages)
-                    }
-                }
+                mySearchEverywhereRunnable = Runnable { searchEverywhere(options, handler, editor, popupPosition, maxUsages) }
                 super.addNotify()
             }
 
@@ -453,11 +400,11 @@ class ShowUsagesAction : AnAction, PopupAction {
                 super.removeNotify()
             }
         }
-        button.setBackground(label.getBackground())
-        panel.setBackground(label.getBackground())
-        label.setOpaque(false)
-        label.setBorder(null)
-        panel.setBorder(HintUtil.createHintBorder())
+        button.background = label.background
+        panel.background = label.background
+        label.isOpaque = false
+        label.border = null
+        panel.border = HintUtil.createHintBorder()
         panel.add(label, BorderLayout.CENTER)
         panel.add(button, BorderLayout.EAST)
         return panel
@@ -475,16 +422,10 @@ class ShowUsagesAction : AnAction, PopupAction {
         if (shortcut != null) {
             shortcutText = "(" + KeymapUtil.getShortcutText(shortcut) + ")"
         }
-        return InplaceButton("Settings..." + shortcutText, AllIcons.General.Settings, object : ActionListener {
-            override fun actionPerformed(e: ActionEvent?) {
-                SwingUtilities.invokeLater(object : Runnable {
-                    override fun run() {
-                        showDialogAndFindUsages(handler, popupPosition, editor, maxUsages)
-                    }
-                })
-                cancelAction.run()
-            }
-        })
+        return InplaceButton("Settings..." + shortcutText, AllIcons.General.Settings) {
+            SwingUtilities.invokeLater { showDialogAndFindUsages(handler, popupPosition, editor, maxUsages) }
+            cancelAction.run()
+        }
     }
 
     private fun showDialogAndFindUsages(
@@ -495,7 +436,7 @@ class ShowUsagesAction : AnAction, PopupAction {
     ) {
         val dialog = handler.getFindUsagesDialog(false, false, false)
         dialog.show()
-        if (dialog.isOK()) {
+        if (dialog.isOK) {
             dialog.calcFindUsagesOptions()
             showElementUsages(handler, editor, popupPosition, maxUsages, getDefaultOptions(handler))
         }
@@ -516,16 +457,16 @@ class ShowUsagesAction : AnAction, PopupAction {
         processIcon: AsyncProcessIcon,
         hadMoreSeparator: Boolean
     ): JBPopup {
-        table.setRowHeight(PlatformIcons.CLASS_ICON.getIconHeight() + 2)
+        table.rowHeight = PlatformIcons.CLASS_ICON.iconHeight + 2
         table.setShowGrid(false)
         table.setShowVerticalLines(false)
         table.setShowHorizontalLines(false)
-        table.setTableHeader(null)
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN)
-        table.setIntercellSpacing(Dimension(0, 0))
+        table.tableHeader = null
+        table.autoResizeMode = JTable.AUTO_RESIZE_LAST_COLUMN
+        table.intercellSpacing = Dimension(0, 0)
 
         val builder: PopupChooserBuilder<*> = PopupChooserBuilder<Any?>(table)
-        val title = presentation.getTabText()
+        val title = presentation.tabText
         if (title != null) {
             val result: String = getFullTitle(usages, title, hadMoreSeparator, visibleNodes.size - 1, true)
             builder.setTitle(result)
@@ -533,7 +474,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
 
         builder.setMovable(true).setResizable(true)
-        builder.setItemChoosenCallback(object : Runnable {
+        builder.setItemChosenCallback(object : Runnable {
             override fun run() {
                 val selected = table.selectedRows
                 for (i in selected) {
@@ -558,7 +499,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                     popup.first()?.cancel()
                     showDialogAndFindUsages(handler, popupPosition, editor, maxUsages)
                 }
-            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
+            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.firstKeyStroke), table)
         }
         shortcut = showUsagesShortcut
         if (shortcut != null) {
@@ -567,7 +508,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                     popup.first()?.cancel()
                     searchEverywhere(options, handler, editor, popupPosition, maxUsages)
                 }
-            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.getFirstKeyStroke()), table)
+            }.registerCustomShortcutSet(CustomShortcutSet(shortcut.firstKeyStroke), table)
         }
 
         val settingsButton = createSettingsButton(handler, popupPosition, editor, maxUsages, object : Runnable {
@@ -597,14 +538,13 @@ class ShowUsagesAction : AnAction, PopupAction {
         ) {
             init {
                 val action = ActionManager.getInstance().getAction(IdeActions.ACTION_FIND_USAGES)
-                setShortcutSet(action.shortcutSet)
+                shortcutSet = action.shortcutSet
             }
 
             override fun actionPerformed(e: AnActionEvent) {
                 hideHints()
                 popup.first()?.cancel()
-                val findUsagesManager =
-                    (FindManager.getInstance(usageView.project) as FindManagerImpl).findUsagesManager
+                val findUsagesManager = (FindManager.getInstance(usageView.project) as FindManagerImpl).findUsagesManager
 
                 findUsagesManager.findUsages(
                     handler.primaryElements, handler.secondaryElements, handler, options,
@@ -613,8 +553,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             }
         })
 
-        val actionToolbar =
-            ActionManager.getInstance().createActionToolbar(ActionPlaces.USAGE_VIEW_TOOLBAR, toolbar, true)
+        val actionToolbar = ActionManager.getInstance().createActionToolbar(ActionPlaces.USAGE_VIEW_TOOLBAR, toolbar, true)
         actionToolbar.isReservePlaceAutoPopupIcon = false
         val toolBar = actionToolbar.component
         toolBar.isOpaque = false
@@ -623,7 +562,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         popup[0] = builder.createPopup()
         val content = popup.first()?.content
 
-        myWidth = ((toolBar.preferredSize.getWidth()
+        myWidth = ((toolBar.preferredSize.width
                 + JLabel(
             getFullTitle(
                 usages,
@@ -632,7 +571,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                 visibleNodes.size - 1,
                 true
             )
-        ).preferredSize.getWidth() + settingsButton.preferredSize.getWidth())).toInt()
+        ).preferredSize.width + settingsButton.preferredSize.width))
         myWidth = -1
         for (action in toolbar.getChildren(null as AnActionEvent?)) {
             action.unregisterCustomShortcutSet(usageView.component)
@@ -695,7 +634,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             ScrollingUtil.ensureSelectionExists(table)
             newSelection = table.selectedRow
         } else {
-            table.getSelectionModel().setSelectionInterval(newSelection, newSelection)
+            table.selectionModel.setSelectionInterval(newSelection, newSelection)
         }
         ScrollingUtil.ensureIndexIsVisible(table, newSelection, 0)
 
@@ -713,9 +652,9 @@ class ShowUsagesAction : AnAction, PopupAction {
         val d = window.size
 
         var width: Int = calcMaxWidth(table)
-        width = max(d.getWidth(), width.toDouble()).toInt()
+        width = max(d.width, width)
         val headerSize = (popup as AbstractPopup).headerPreferredSize
-        width = max(headerSize.getWidth().toInt(), width)
+        width = max(headerSize.width, width)
         width = max(myWidth, width)
 
         if (myWidth == -1) myWidth = width
@@ -724,7 +663,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         myWidth = newWidth
 
         val rowsToShow = min(30, data.size)
-        var dimension = Dimension(newWidth, table.getRowHeight() * rowsToShow)
+        var dimension = Dimension(newWidth, table.rowHeight * rowsToShow)
         val rectangle: Rectangle = fitToScreen(dimension, popupPosition, table)
         dimension = rectangle.size
         val location = window.location
@@ -732,7 +671,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             window.location = rectangle.location
         }
 
-        if (!data.isEmpty()) {
+        if (data.isNotEmpty()) {
             ScrollingUtil.ensureSelectionExists(table)
         }
         table.size = dimension
@@ -743,8 +682,7 @@ class ShowUsagesAction : AnAction, PopupAction {
         //table.setPreferredScrollableViewportSize(dimension);
         val footerSize = popup.footerPreferredSize
 
-        val newHeight =
-            (dimension.height + headerSize.getHeight() + footerSize.getHeight()).toInt() + 4 /* invisible borders, margins etc*/
+        val newHeight = (dimension.height + headerSize.height + footerSize.height) + 4 /* invisible borders, margins etc*/
         val newDim = Dimension(dimension.width, newHeight)
         window.size = newDim
         window.minimumSize = newDim
@@ -864,7 +802,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             if (node is StringNode) return ""
             val usage = node.usage
             if (usage === MORE_USAGES_SEPARATOR) return ""
-            val group = node.getParent() as GroupNode?
+            val group = node.parent as GroupNode?
             return usage.presentation.plainText + group
         }
 
@@ -873,7 +811,7 @@ class ShowUsagesAction : AnAction, PopupAction {
             val i = data.indexOf(element as UsageNode?)
             if (i == -1) return
             val viewRow = this.table!!.convertRowIndexToView(i)
-            this.table!!.getSelectionModel().setSelectionInterval(viewRow, viewRow)
+            this.table!!.selectionModel.setSelectionInterval(viewRow, viewRow)
             TableUtil.scrollSelectionToVisible(this.table!!)
         }
 
@@ -904,7 +842,8 @@ class ShowUsagesAction : AnAction, PopupAction {
                 if (i != 0) return i
 
                 if (o1 is Comparable<*> && o2 is Comparable<*>) {
-                    return (o1 as Comparable<Any>).compareTo(o2)
+                    @Suppress("UNCHECKED_CAST")
+                    return (o1 as Comparable<Any>).compareTo(o2 as Any)
                 }
 
                 val loc1 = o1.location
@@ -968,11 +907,12 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
 
         private fun searchScopePresentableName(options: FindUsagesOptions, project: Project): String {
-            return notNullizeScope(options, project).getDisplayName()
+            return notNullizeScope(options, project).displayName
         }
 
         private fun notNullizeScope(options: FindUsagesOptions, project: Project): SearchScope {
             val scope = options.searchScope
+            @Suppress("SENSELESS_COMPARISON")
             if (scope == null) return ProjectScope.getAllScope(project)
             return scope
         }
@@ -1014,8 +954,8 @@ class ShowUsagesAction : AnAction, PopupAction {
         private fun getSecondInvocationTitle(options: FindUsagesOptions, handler: FindUsagesHandler): String? {
             if (showUsagesShortcut != null) {
                 val maximalScope = FindUsagesManager.getMaximalScope(handler)
-                if (notNullizeScope(options, handler.getProject()) != maximalScope) {
-                    return "Press " + KeymapUtil.getShortcutText(showUsagesShortcut!!) + " again to search in " + maximalScope.getDisplayName()
+                if (notNullizeScope(options, handler.project) != maximalScope) {
+                    return "Press " + KeymapUtil.getShortcutText(showUsagesShortcut!!) + " again to search in " + maximalScope.displayName
                 }
             }
             return null
@@ -1050,7 +990,7 @@ class ShowUsagesAction : AnAction, PopupAction {
                 if (otherEditor !== editor) return false
                 val otherOffset: Int = getUsageOffset(other)
                 if (otherOffset == -1) return false
-                val otherLine = otherEditor.getDocument().getLineNumber(otherOffset)
+                val otherLine = otherEditor.document.getLineNumber(otherOffset)
                 if (otherLine != lineNumber) return false
             }
             return true
@@ -1069,9 +1009,9 @@ class ShowUsagesAction : AnAction, PopupAction {
                 table.model = model
 
                 val renderer = ShowUsagesTableCellRenderer(usageView)
-                for (i in 0..<table.getColumnModel().columnCount) {
-                    val column = table.getColumnModel().getColumn(i)
-                    column.setCellRenderer(renderer)
+                for (i in 0..<table.columnModel.columnCount) {
+                    val column = table.columnModel.getColumn(i)
+                    column.cellRenderer = renderer
                 }
             }
             return model
@@ -1102,18 +1042,18 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
 
         private fun calcMaxWidth(table: JTable): Int {
-            val colsNum = table.getColumnModel().columnCount
+            val colsNum = table.columnModel.columnCount
 
             var totalWidth = 0
             for (col in 0..<colsNum - 1) {
-                val column = table.getColumnModel().getColumn(col)
+                val column = table.columnModel.getColumn(col)
                 val preferred = column.preferredWidth
                 val width = max(preferred, columnMaxWidth(table, col))
                 totalWidth += width
-                column.setMinWidth(width)
-                column.setMaxWidth(width)
-                column.setWidth(width)
-                column.setPreferredWidth(width)
+                column.minWidth = width
+                column.maxWidth = width
+                column.width = width
+                column.preferredWidth = width
             }
 
             totalWidth += columnMaxWidth(table, colsNum - 1)
@@ -1122,13 +1062,13 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
 
         private fun columnMaxWidth(table: JTable, col: Int): Int {
-            val column = table.getColumnModel().getColumn(col)
+            val column = table.columnModel.getColumn(col)
             var width = 0
-            for (row in 0..<table.getRowCount()) {
-                val component = table.prepareRenderer(column.getCellRenderer(), row, col)
+            for (row in 0..<table.rowCount) {
+                val component = table.prepareRenderer(column.cellRenderer, row, col)
 
-                val rendererWidth = component.getPreferredSize().width
-                width = max(width, rendererWidth + table.getIntercellSpacing().width)
+                val rendererWidth = component.preferredSize.width
+                width = max(width, rendererWidth + table.intercellSpacing.width)
             }
             return width
         }
@@ -1154,20 +1094,20 @@ class ShowUsagesAction : AnAction, PopupAction {
         }
 
         private fun fitToScreen(newDim: Dimension, popupPosition: RelativePoint, table: JTable): Rectangle {
-            val rectangle = Rectangle(popupPosition.getScreenPoint(), newDim)
+            val rectangle = Rectangle(popupPosition.screenPoint, newDim)
             ScreenUtil.fitToScreen(rectangle)
-            if (rectangle.getHeight() != newDim.getHeight()) {
-                val newHeight = rectangle.getHeight().toInt()
-                val roundedHeight = newHeight - newHeight % table.getRowHeight()
-                rectangle.setSize(rectangle.getWidth().toInt(), max(roundedHeight, table.getRowHeight()))
+            if (rectangle.height != newDim.height) {
+                val newHeight = rectangle.height
+                val roundedHeight = newHeight - newHeight % table.rowHeight
+                rectangle.setSize(rectangle.width, max(roundedHeight, table.rowHeight))
             }
             return rectangle
         }
 
         private fun getEditorFor(usage: Usage): Editor? {
-            val location = usage.getLocation()
-            val newFileEditor = if (location == null) null else location.getEditor()
-            return if (newFileEditor is TextEditor) newFileEditor.getEditor() else null
+            val location = usage.location
+            val newFileEditor = location?.editor
+            return if (newFileEditor is TextEditor) newFileEditor.editor else null
         }
     }
 }

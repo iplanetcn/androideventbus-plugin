@@ -6,7 +6,7 @@ import com.intellij.psi.*
 import com.intellij.usages.Usage
 import com.intellij.usages.UsageInfo2UsageAdapter
 
-class ReceiverFilterJava : Filter {
+class ReceiverFilterJava(private val mTagPsiExpression: PsiExpression) : Filter {
     override fun shouldShow(usage: Usage): Boolean {
         var element = (usage as UsageInfo2UsageAdapter).element
         if (element is PsiJavaCodeReferenceElement) {

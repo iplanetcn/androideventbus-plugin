@@ -1,18 +1,3 @@
-/*
- * Copyright 2000-2009 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package cn.cdtft.plugin.aep
 
 import com.intellij.psi.PsiManager
@@ -34,7 +19,7 @@ import javax.swing.JTable
 import javax.swing.SwingConstants
 import javax.swing.table.TableCellRenderer
 
-internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImpl) : TableCellRenderer {
+internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImpl): TableCellRenderer {
     override fun getTableCellRendererComponent(
         list: JTable,
         value: Any?,
@@ -44,21 +29,21 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
         column: Int
     ): Component {
         val usageNode = value as? UsageNode
-
         val usage = usageNode?.usage
-
         val flowLayout = FlowLayout(FlowLayout.LEFT, 0, 0)
-        val panel = JPanel(flowLayout)
+        val panel = object : JPanel(flowLayout) {
+            override fun getAccessibleContext() = super.getAccessibleContext()
+        }
         val fileBgColor = getBackgroundColor(isSelected, usage)
-        val bg = UIUtil.getListSelectionBackground()
-        val fg = UIUtil.getListSelectionForeground()
-        panel.setBackground(if (isSelected) bg else fileBgColor ?: list.getBackground())
-        panel.setForeground(if (isSelected) fg else list.getForeground())
+        val bg = UIUtil.getListSelectionBackground(false)
+        val fg = UIUtil.getListSelectionForeground(false)
+        panel.background = if (isSelected) bg else fileBgColor ?: list.background
+        panel.foreground = if (isSelected) fg else list.foreground
 
         if (usage == null || usageNode is ShowUsagesAction.StringNode) {
             panel.layout = BorderLayout()
             if (column == 0) {
-                panel.add(JLabel("<html><body><b>" + value + "</b></body></html>", SwingConstants.CENTER))
+                panel.add(JLabel("<html><body><b>$value</b></body></html>", SwingConstants.CENTER))
             }
             return panel
         }
@@ -69,7 +54,7 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
         textChunks.border = null
 
         if (column == 0) {
-            val parent = usageNode!!.getParent() as GroupNode?
+            val parent = usageNode.getParent() as GroupNode?
             appendGroupText(parent, panel, fileBgColor)
             if (usage === ShowUsagesAction.Companion.MORE_USAGES_SEPARATOR) {
                 textChunks.append("...<")
@@ -115,7 +100,7 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
     private fun getBackgroundColor(isSelected: Boolean, usage: Usage?): Color? {
         var fileBgColor: Color? = null
         if (isSelected) {
-            fileBgColor = UIUtil.getListSelectionBackground()
+            fileBgColor = UIUtil.getListSelectionBackground(false)
         } else {
             val virtualFile = if (usage is UsageInFile) usage.file else null
             if (virtualFile != null) {
@@ -133,14 +118,13 @@ internal class ShowUsagesTableCellRenderer(private val myUsageView: UsageViewImp
     private fun appendGroupText(node: GroupNode?, panel: JPanel, fileBgColor: Color?) {
         val group = node?.group
         if (group == null) return
-        val parentGroup = node!!.getParent() as GroupNode?
+        val parentGroup = node.getParent() as GroupNode?
         appendGroupText(parentGroup, panel, fileBgColor)
         if (node.canNavigateToSource()) {
             val renderer = SimpleColoredComponent()
 
             renderer.setIcon(group.icon)
-            val attributes: SimpleTextAttributes =
-                deriveAttributesWithColor(SimpleTextAttributes.REGULAR_ATTRIBUTES, fileBgColor)
+            val attributes: SimpleTextAttributes = deriveAttributesWithColor(SimpleTextAttributes.REGULAR_ATTRIBUTES, fileBgColor)
             renderer.append(group.presentableGroupText, attributes)
             renderer.append(" ", attributes)
             renderer.ipad = JBUI.emptyInsets()

@@ -4,17 +4,14 @@ import com.intellij.openapi.diagnostic.Logger
 import org.apache.log4j.Level
 import org.jetbrains.annotations.NonNls
 
-/**
- * Created by likfe on 2018/3/2.
- */
-@Suppress("UnstableApiUsage")
+@Suppress("UnstableApiUsage", "OVERRIDE_DEPRECATION", "KotlinConstantConditions")
 class MLogger : Logger() {
     override fun isDebugEnabled(): Boolean {
         return MLog.DEBUG
     }
 
     override fun debug(s: @NonNls String?) {
-        System.err.println("ERROR: " + s)
+        System.err.println("ERROR: $s")
     }
 
     override fun debug(throwable: Throwable?) {
